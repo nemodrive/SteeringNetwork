@@ -1,0 +1,36 @@
+For our initial experiments, we used a subset of the
+BDDV comprising 21,808 dashboard camera videos as
+training data, 1,470 as validation data and 3,561 as test data.
+Each video is approximately 40 seconds in length. Since a
+small portion of the videos has duration just under 40 seconds,
+we truncate all videos to 36 seconds. We downsample
+frames to 640 × 360 and temporally downsample the
+video to 3Hz to avoid feeding near-duplicate frames into
+our model. After all such preprocessing, we have a total
+of 2.9 million frames, which is approximately 2.5 times the
+size of the ILSVRC2012 dataset. To train our model, we
+used stochastic gradient descent (SGD) with an initial learning
+rate of 10−4
+, momentum of 0.99 and a batch size of 2.
+The learning rate was decayed by 0.5 whenever the training
+loss plateaus. Gradient clipping of 10 was applied to
+avoid gradient explosion in the LSTM. The LSTM is run
+sequentially on the video with the previous visual observations.
+Specifically, the number of hidden units in LSTM is
+64. Models are evaluated using predictive perplexity and
+accuracy, where the maximum likelihood action is taken as
+the prediction.
+
+
+batch_size: 2
+Optimizer: SGD
+    lr_start: 10-e4
+    momentum: 0.99
+    decay 0.5 whenever the training loss plateaus.
+Gradient clipping 10
+LSTM Hidden units 64
+
+
+
+Input format:
+

@@ -1,0 +1,89 @@
+verbose: &verbose 1
+runs: 1
+procs_no: 8
+save_folder: "experiments"
+name: "Test_"
+title: "Simple steering network"
+plots: "tensorboard" # can be "matplotlib", "tensorboard" or "both"
+
+general:
+  batch_size: &batch_size 2
+  use_cuda: &use_cuda no
+  seed: 3
+
+data_info: &data_info
+  image_shape: [3, 640, 360]
+
+# Estimator
+model: &model
+  name: "LargeScaleE2EModel"
+  type: ""
+  hidden_size: 256
+
+train: &train
+  no_epochs: 100000
+  eval_freq: 1
+  max_grad_norm: 40.
+  criterion: MSELoss
+  algorithm: RMSprop
+  algorithm_args:
+    lr: 0.001
+
+agent: &agent
+  name: "LargeScaleE2EAgent"
+  type: ""
+  resume: ""
+  model: *model
+  train: *train
+  data_info: *data_info
+  verbose: *verbose
+  use_cuda: *use_cuda
+  batch_size: *batch_size
+  data_parallel: [0, -1] # [use/not_use, device_ids: -1 -- all / [list of device ids] ]
+  save_freq: 5
+  save_best: yes
+  save_best_freq_lim: 5
+
+dataset: &dataset
+  #name: "LargeScaleE2EDataset"
+  name: "LargeScaleE2EDatasetSteering"
+  dataset_path: "/home/alex/Desktop/e2edriving/BDD_Driving_Model/data/dataset/bdd100k/samples-1k"
+  dataset_video_subpath: "/videos"
+  dataset_info_subpath: "/info"
+  dataset_preprocessed: "/intermediary"
+  dataset_preprocessed_speeds: "/interpolated.json"
+  dataset_preprocessed_videoinfo: "/video_infos.json"
+  use_preprocessed: yes
+  temporal_stride: 0.33333
+  sequence_length: 5
+  playback_fps: 15
+
+data_loader:
+  name: "LargeScaleE2ELoader"
+  dataset: *dataset
+  data_info: *data_info
+  test_size: .2
+  shuffle: yes
+  no_workers: 4
+  data_seed: 314
+  batch_size: *batch_size
+
+
+simulator: &simulator
+  save_folder: "simulations"
+  carla_log_name: "test"
+  log_name: "log"
+  continue_experiment: False
+  host: "localhost"
+  port: 2000
+  town: "Town01"
+  image_cut: [115, 510]
+
+
+carla_settings: &carla_settings
+  exe_path: "/home/dan/Licenta/CarlaSimulator/CARLA_0.8.2"
+  town: "/Game/Maps/Town01"
+  resX: "1200"
+  resY: "900"
+  fps: "10"
+  settings_file: "./Example.CarlaSettings.ini"
