@@ -96,7 +96,7 @@ class ConditionalImitationLearningDataset(Dataset):
         control_cmds.append(self.tag_names.index('Brake'))
         target_vect = target_vector[control_cmds]
 
-        speed = target_vector[self.tag_names.index("Speed")]
+        speed = target_vector[self.tag_names.index('Speed')]
 
         #compute steer distribution as a gaussian
         steer = target_vector[self.tag_names.index('Steer')]

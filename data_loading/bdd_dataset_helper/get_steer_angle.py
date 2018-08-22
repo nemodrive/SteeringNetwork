@@ -73,7 +73,7 @@ def full_im(pixel, all_num):
 
 def read_one_video(video_path, jobid, args):
     fd, fprefix, cache_images, out_name = parse_path(video_path, jobid, args)
-    
+
     FNULL = open(os.devnull, 'w')
     hz_res = 1 if args.low_res else 15
     ratio = False
@@ -261,7 +261,6 @@ def parallel_run(args):
 
 
 def convert_one(video_path, jobid, args):
-    fd, fprefix, cache_images, out_name = parse_path(video_path, jobid, args)
     example, state = read_one_video(video_path, jobid, args)
     return example
 
@@ -289,20 +288,20 @@ def p_convert(video_path, jobid, args):
     speed = example['speeds']
     speed = np.reshape(speed, [-1, 2])
     speed = speed[:args.truncate_frames, :]
-    speed = speed[tstart::args.temporal_downsample_factor, :]
+    speed_sub = speed[tstart::args.temporal_downsample_factor, :]
 
     # from speed to stop labels
-    stop_label = speed_to_future_has_stop(speed, args.stop_future_frames,
+    stop_label = speed_to_future_has_stop(speed_sub, args.stop_future_frames,
                                           args.speed_limit_as_stop)
 
     # Note that the turning heuristic is tuned for 3Hz video and urban area
     # Note also that stop_future_frames is reused for the turn
-    turn, steer_value = turn_future_smooth(speed, args.stop_future_frames,
-                              args.speed_limit_as_stop, args, 1, 1)
-    import pdb; pdb.set_trace()
+    turn, steer_value = turn_future_smooth(speed_sub, args.stop_future_frames,
+                              args.speed_limit_as_stop, args)
+    # import pdb; pdb.set_trace()
     preview_data(encoded_sub, turn, steer_value)
     locs = relative_future_location(
-        speed, args.stop_future_frames,
+        speed_sub, args.stop_future_frames,
         args.frame_rate / args.temporal_downsample_factor)
 
 
@@ -319,7 +318,6 @@ def preview_data(images, turn, steer_value):
             break
 
     cv2.destroyAllWindows()
-
 
 
 def process_videos(args):
@@ -375,7 +373,7 @@ if __name__ == '__main__':
         type=int,
         default=1,
         help='The original high res video is 640*360. This param downsample the image during jpeg decode process')
-    
+
     '''The original video is in 15 FPS, this flag optionally downsample the video temporally
        All other frame related operations are carried out after temporal downsampling'''
     arg_parser.add_argument(
@@ -412,7 +410,7 @@ if __name__ == '__main__':
         '--deceleration_thres',
         type=float,
         default=1.0,
-        help='deceleration threshold, minus value for not using it')
+        help='deceleration threshold, plus value for not using it')
 
     arg_parser.add_argument(
         '--non_random_temporal_downsample',
@@ -432,6 +430,5 @@ if __name__ == '__main__':
         print("Warning: using low res specific settings")
     if not os.path.exists(args.output_directory):
         os.mkdir(args.output_directory)
-
 
     process_videos(args)

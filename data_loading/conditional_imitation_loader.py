@@ -81,14 +81,23 @@ class ConditionalImitationLoader(DataLoaderBase):
             'Orientation Z', 'Control signal', 'Noise', 'Camera', 'Angle'
         ]
 
-        self.data = ((h5_files_train, tag_names), (h5_files_test, tag_names))
+        self.data = {
+            'train': {
+                'files': h5_files_train,
+                'tags': tag_names
+            },
+            'test': {
+                'files': h5_files_test,
+                'tags': tag_names
+            }
+        }
 
     def get_train_loader(self):
-
+        train_data = self.data['train']
         train_dataset = self._dataset(
             self._dataset_cfg,
-            self.data[0][0],
-            self.data[0][1],
+            train_data['files'],
+            train_data['tags'],
             self.image_width,
             self.image_height,
             nr_bins=self._nr_bins,
@@ -96,8 +105,11 @@ class ConditionalImitationLoader(DataLoaderBase):
             transform=self.transformations,
             augmentation=self.augmentation)
 
-        sampler = self._sampler(self.data[0][0], self.data[0][1], self._seed,
-                                self._dataset_cfg.sampler.weights)
+        sampler = self._sampler(
+            train_data['files'],
+            train_data['tags'],
+            self._seed,
+            self._dataset_cfg.sampler.weights)
 
         return DataLoader(
             train_dataset,
@@ -107,10 +119,11 @@ class ConditionalImitationLoader(DataLoaderBase):
             num_workers=self._no_workers)
 
     def get_test_loader(self):
+        test_data = self.data['test']
         test_dataset = self._dataset(
             self._dataset_cfg,
-            self.data[1][0],
-            self.data[1][1],
+            test_data['files'],
+            test_data['tags'],
             self.image_width,
             self.image_height,
             nr_bins=self._nr_bins,

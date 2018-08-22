@@ -91,14 +91,14 @@ def get_interpolated_speed_xy(res, hz=15):
     # first convert to speed vecs
     l = len(course)
 
+    # interpolate when the number of missing speed is small
+    speed0 = fill_missing_speeds_and_courses(speed0, False)
+    course = fill_missing_speeds_and_courses(course, True)
+    if (speed0 is None) or (course is None):
+        return None
+
     speed = np.zeros((l, 2), dtype=np.float32)
     for i in range(l):
-        # interpolate when the number of missing speed is small
-        speed0 = fill_missing_speeds_and_courses(speed0, False)
-        course = fill_missing_speeds_and_courses(course, True)
-        if (speed0 is None) or (course is None):
-            return None
-
         speed[i, :] = vec(speed0[i], course[i])
 
 
@@ -107,7 +107,7 @@ def get_interpolated_speed_xy(res, hz=15):
     nout = tot_ms * hz // 1000
 
     out = np.zeros((nout, 2), dtype=np.float32)
-    print(speed.shape)
+
     # if time is t second, there should be t+1 points
     last_start = 0
     ts = res['timestamp']
@@ -134,7 +134,6 @@ def get_interpolated_speed_xy(res, hz=15):
 
 
 def get_interpolated_speed(json_path, video_filename, hz):
-
     res = read_json(json_path, video_filename)
     if res is None:
         return None

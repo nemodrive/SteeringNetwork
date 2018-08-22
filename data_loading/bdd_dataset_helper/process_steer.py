@@ -32,15 +32,26 @@ def speed_to_course(speed):
         elif speed[0] < 0:
             course = 3 * pi / 2
         return course
+
     course = math.atan(speed[0] / speed[1])
-    if course < 0:
-        course = course + 2 * pi
-    if speed[1] > 0:
-        course = course
-    else:
+    # if course < 0:
+    #     course = course + 2 * pi
+
+    # if speed[1] < 0:
+    #     course = pi + course
+    #     if course > 2 * pi:
+    #         course = course - 2 * pi
+
+    if speed[0] >= 0 and speed[1] < 0:
+        # Second quadrant
         course = pi + course
-        if course > 2 * pi:
-            course = course - 2 * pi
+    elif speed[0] < 0 and speed[1] < 0:
+        # Third quadrant
+        course = pi + course
+    elif speed[0] < 0 and speed[1] > 0:
+        # Fourth quadrant
+        course = 2 * pi + course
+
     assert not math.isnan(course)
     return course
 
@@ -79,7 +90,7 @@ def turning_heuristics(speed_list, args, speed_limit_as_stop=0):
 
     for i in range(l):
         if i == 0:
-            action[i] = enum['not_sure']
+            # Uncertainty to be solved at the end
             continue
 
         # the speed_limit_as_stop should be small,
@@ -97,29 +108,30 @@ def turning_heuristics(speed_list, args, speed_limit_as_stop=0):
             course_diff[i] = 9999
             continue
 
-        course_diff[i] = diff(course, prev) * 360 / (2 * math.pi)
-        if thresh_high > diff(course, prev) > thresh_low:
-            if diff(course, prev) > thresh_slight_low:
+        curr_course_diff = diff(course, prev)
+
+        course_diff[i] = curr_course_diff * 360 / (2 * math.pi)
+        # Decide the type of steering action
+        if thresh_high > curr_course_diff > thresh_low:
+            if curr_course_diff > thresh_slight_low:
                 action[i] = enum['turn_right']
             else:
                 action[i] = enum['turn_right_slight']
-
-        elif -thresh_high < diff(course, prev) < -thresh_low:
-            if diff(course, prev) < -thresh_slight_low:
+        elif -thresh_high < curr_course_diff < -thresh_low:
+            if curr_course_diff < -thresh_slight_low:
                 action[i] = enum['turn_left']
             else:
                 action[i] = enum['turn_left_slight']
-        elif diff(course, prev) >= thresh_high or diff(course,
-                                                       prev) <= -thresh_high:
+        elif curr_course_diff >= thresh_high or curr_course_diff <= -thresh_high:
             action[i] = enum['not_sure']
         else:
             action[i] = enum['straight']
 
         # this detect significant slow down that is not due to going to turn
-        if args.deceleration_thres > 0 and action[i] == enum['straight']:
+        if args.deceleration_thres < 0 and action[i] == enum['straight']:
             hz = args.frame_rate / args.temporal_downsample_factor
-            acc_now = (speed_v[i] - speed_v[i - 1]) / (1.0 / hz)
-            if acc_now < -args.deceleration_thres:
+            acc_now = (speed_v[i] - speed_v[i - 1]) * hz
+            if acc_now < args.deceleration_thres:
                 action[i] = enum['slow_or_stop']
                 continue
 
@@ -193,10 +205,10 @@ def no_stop_dropout_valid(stop_label, drop_prob):
 def fix_none_in_course(course_list):
     l = len(course_list)
 
-    # fix the initial None value
+    # fix the initial None values
     not_none_value = 0
     for i in range(l):
-        if not (course_list[i] is None):
+        if course_list[i] is not None:
             not_none_value = course_list[i]
             break
     for i in range(l):

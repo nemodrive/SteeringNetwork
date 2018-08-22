@@ -1,11 +1,14 @@
 import cv2
 import os
 import json
-import numpy as np
 import math
 import argparse
 import subprocess
 import time
+from tqdm import tqdm
+import numpy as np
+import pandas as pd
+from copy import deepcopy
 from process_steer import *
 from frames_sensors import get_interpolated_sensors
 
@@ -83,13 +86,33 @@ def get_nr_frames(video_path):
     return int(pout)
 
 
-def get_steer_values(speed_values, time_stamps):
+def get_steer_values(fixed_data):
+    speed = fixed_data['speed']
+    time_stamps = fixed_data['timestamp']
+    gps = fixed_data['gps']
+    acc = fixed_data['accelerometer']
+    gyro = fixed_data['gyroscope']
+    # Trucate frames in case of a positive argument value
+    if args.truncate_frames > 0:
+        speed = fixed_data['speed'][:args.truncate_frames, :]
+        time_stamps = fixed_data['timestamp'][:args.truncate_frames]
+        gps = fixed_data['gps'][:args.truncate_frames, :]
+        acc = fixed_data['accelerometer'][:args.truncate_frames, :]
+        gyro = fixed_data['gyroscope'][:args.truncate_frames, :]
 
-    speed = speed_values[:args.truncate_frames, :]
+    # Downsample data
     speed = speed[0::args.temporal_downsample_factor, :]
-
-    time_stamps = time_stamps[:args.truncate_frames]
     time_stamps = time_stamps[0::args.temporal_downsample_factor]
+    gps = gps[0::args.temporal_downsample_factor, :]
+    acc = acc[0::args.temporal_downsample_factor, :]
+    gyro = gyro[0::args.temporal_downsample_factor, :]
+    sampled_data = {
+        'timestamp': time_stamps,
+        'speed': speed,
+        'gps': gps,
+        'accelerometer': acc,
+        'gyroscope': gyro
+    }
 
     # from speed to stop labels
     #stop_label = speed_to_future_has_stop(speed, args.stop_future_frames,
@@ -104,36 +127,80 @@ def get_steer_values(speed_values, time_stamps):
     #    speed, args.stop_future_frames,
     #    args.frame_rate / args.temporal_downsample_factor)
 
-    return turn, steer_value
+    return sampled_data, turn, steer_value
 
 
 def process_video_info(video_path, args):
-    fd, fprefix, out_name = parse_path(video_path, args)
+    fd, fprefix, fixed_out_name, original_out_name, sampled_out_name = \
+        parse_path(video_path, args)
 
     nr_frames = get_nr_frames(video_path)
     duration, _ = probe_file(video_path)
     # save the speed field
     json_path = os.path.join(os.path.dirname(fd), "info", fprefix + ".json")
-    t_stamp, speed_f_steer, speed, gps, acc, gyro, err = get_interpolated_sensors(
+    fix_data, orig_data, err = get_interpolated_sensors(
         json_path, fprefix + ".mov", nr_frames)
     if err:
         # if speed is none, the error message is printed in other functions
-        return 0, False
+        return False
 
-    turn, steer_value = get_steer_values(speed_f_steer, t_stamp)
-    import pdb; pdb.set_trace()
+    samp_data, turn, steer_value = get_steer_values(deepcopy(fix_data))
+    if args.debug:
+        import pdb; pdb.set_trace()
+
+    # Prepare data to be transformed into csv
+    full_data = {
+        'fixed_data': fix_data,
+        'original_data': orig_data,
+        'sampled_data': samp_data
+    }
+    data_to_save = {}
+    for data_type in full_data:
+        curr_data = full_data[data_type]
+        data_to_save[data_type] = {
+            'timestamp': curr_data['timestamp'],
+            'speed_x': curr_data['speed'][:, 0],
+            'speed_y': curr_data['speed'][:, 1],
+            'gps_lat': curr_data['gps'][:, 0],
+            'gps_long': curr_data['gps'][:, 1],
+            'acceleration_x': curr_data['accelerometer'][:, 0],
+            'acceleration_y': curr_data['accelerometer'][:, 1],
+            'acceleration_z': curr_data['accelerometer'][:, 2],
+            'gyro_x': curr_data['gyroscope'][:, 0],
+            'gyro_y': curr_data['gyroscope'][:, 1],
+            'gyro_z': curr_data['gyroscope'][:, 2]
+        }
+
+    data_to_save['sampled_data']['turn'] = turn
+    data_to_save['sampled_data']['steer'] = steer_value
+
+    # Create pandas dataframes with all the data
+    df = pd.DataFrame(data=data_to_save['fixed_data'])
+    df.to_csv(fixed_out_name)
+
+    df = pd.DataFrame(data=data_to_save['original_data'])
+    df.to_csv(original_out_name)
+
+    df = pd.DataFrame(data=data_to_save['sampled_data'])
+    df.to_csv(sampled_out_name)
 
     return True
 
 
 def parse_path(video_path, args):
+    '''
+    Extract video directory path, video name and names of the data output
+    files
+    '''
     fd, fname = os.path.split(video_path)
     fprefix = fname.split(".")[0]
-    out_name = os.path.join(args.output_directory, fprefix + ".csv")
+    fixed_out_name = os.path.join(args.output_directory, fprefix + "_fixed.csv")
+    original_out_name = os.path.join(args.output_directory, fprefix + "_original.csv")
+    sampled_out_name = os.path.join(args.output_directory, fprefix + "_sampled.csv")
 
     # return all sorts of info:
     # video_base_path, video_name_wo_prefix, cache_path, out_tfrecord_path
-    return (fd, fprefix, out_name)
+    return fd, fprefix, fixed_out_name, original_out_name, sampled_out_name
 
 
 def process_videos(args):
@@ -141,11 +208,13 @@ def process_videos(args):
         content = f.readlines()
     content = [x.strip() for x in content]
 
-    for video in content:
-        process_video_info(video, args)
+    for i in tqdm(range(len(content))):
+        ok = process_video_info(content[i], args)
+        if not ok:
+            print("Video {} produced an error.".format(content[i]))
+            continue
 
     print('Finished processing all files')
-
 
 
 if __name__ == '__main__':
@@ -155,14 +224,18 @@ if __name__ == '__main__':
     arg_parser.add_argument(
         '--video_index',
         type=str,
-        default='/data/nx-bdd-20160929/video_filtered_index_38_60_sec.txt',
+        default='/home/alexm/Desktop/hal_data/samples-1k/filtered',
         help='filtered video indexing')
 
     arg_parser.add_argument(
         '--output_directory',
         type=str,
-        default='/data/nx-bdd-20160929/tfrecord_fix_speed/',
+        default='/home/alexm/Desktop/SteeringNetwork/data_loading/bdd_dataset_helper/video_data',
         help='Training data directory')
+    arg_parser.add_argument(
+        '--debug',
+        type=bool,
+        default=False)
 
     arg_parser.add_argument(
         '--num_threads',
@@ -173,7 +246,7 @@ if __name__ == '__main__':
         '--truncate_frames',
         type=int,
         default=36 * 15,
-        help='Number of frames to leave in the video')
+        help='Number of frames to leave in the video. Negative value corresponds to no trucation')
     arg_parser.add_argument(
         '--temp_dir_root',
         type=str,
@@ -190,7 +263,7 @@ if __name__ == '__main__':
         type=int,
         default=1,
         help='The original high res video is 640*360. This param downsample the image during jpeg decode process')
-    
+
     '''The original video is in 15 FPS, this flag optionally downsample the video temporally
        All other frame related operations are carried out after temporal downsampling'''
     arg_parser.add_argument(
@@ -247,6 +320,5 @@ if __name__ == '__main__':
         print("Warning: using low res specific settings")
     if not os.path.exists(args.output_directory):
         os.mkdir(args.output_directory)
-
 
     process_videos(args)
