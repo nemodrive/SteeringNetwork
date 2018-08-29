@@ -358,11 +358,13 @@ def get_interpolated_loc(res, nr_frames):
     fixed = {
         'timestamp': tstamp_hz,
         'speed': speed_hz,
+        'linear_speed': np.linalg.norm(speed_hz, axis=1),
         'gps': gps_hz
     }
     original = {
         'timestamp': tstamp_orig,
         'speed': speed_orig,
+        'linear_speed': np.linalg.norm(speed_orig, axis=1),
         'gps': gps_orig
     }
 

@@ -1,0 +1,82 @@
+verbose: &verbose 1
+runs: 1
+procs_no: 8
+save_folder: "experiments"
+name: "Test_"
+title: "Conditonal Imitation Learning"
+plots: "tensorboard" # can be "matplotlib", "tensorboard" or "both"
+
+general:
+  batch_size: &batch_size 120
+  use_cuda: &use_cuda no
+  seed: 3
+
+data_info: &data_info
+  image_shape: [3, 88, 200]
+
+# Estimator
+model: &model
+  name: "ConditionalImitationModel"
+  type: ""
+  hidden_size: 256
+
+train: &train
+  no_epochs: 70
+  eval_freq: 1
+  paper_init: True
+  freeze_bn_gamma: False
+  max_grad_norm: 40.
+  batch_norm_eps: 0.001
+  dropout_conv: 0.2
+  dropout_liniar: 0.5
+  criterion: ""
+  decay: 0.5
+  step_size: 50000
+  algorithm: Adam
+  algorithm_args:
+    lr: 0.0002
+    betas: [0.7, 0.85]
+
+sampler: &sampler
+  sampler_name: "BDDVSampler"
+  weights: [0.166, 0.166, 0.168, 0.166, 0.168, 0.166]
+
+dataset: &dataset
+  name: "BDDVDataset"
+  sampler: *sampler
+  dataset_path: "/home/alexm/Desktop/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/train/data/"
+  info_path: "/home/alexm/Desktop/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/train/info/"
+  dataset_eval_path: "/home/alexm/Desktop/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/validation/data/"
+  info_eval_path: "/home/alexm/Desktop/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/validation/info/"
+  video_metadata_path: "/home/alexm/Desktop/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/video_metadata.pkl"
+  video_bucket_ms: 100
+  frame_seq_len: 1
+  steer_dist: 5
+  speed_limit_as_stop: 0.3
+  deceleration_thresh: -3
+
+agent: &agent
+  name: "ConditionalImitationAgent"
+  type: "No Noise Speed 90 0.1 Brake, Extra Left Prob"
+  resume: ""
+  model: *model
+  train: *train
+  dataset: *dataset
+  data_info: *data_info
+  verbose: *verbose
+  use_cuda: *use_cuda
+  batch_size: *batch_size
+  data_parallel: [0, -1] # [use/not_use, device_ids: -1 -- all / [list of device ids] ]
+  save_freq: 2
+  save_best: yes
+  save_best_freq_lim: 5
+
+data_loader:
+  name: "BDDVLoader"
+  dataset: *dataset
+  data_info: *data_info
+  test_size: 0
+  shuffle: yes
+  no_workers: 16
+  data_seed: 314
+  batch_size: *batch_size

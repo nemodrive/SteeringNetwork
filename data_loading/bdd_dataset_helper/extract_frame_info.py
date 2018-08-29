@@ -86,7 +86,7 @@ def get_nr_frames(video_path):
     return int(pout)
 
 
-def get_steer_values(fixed_data):
+def get_steer_values(original_data, fixed_data):
     speed = fixed_data['speed']
     time_stamps = fixed_data['timestamp']
     gps = fixed_data['gps']
@@ -100,19 +100,25 @@ def get_steer_values(fixed_data):
         acc = fixed_data['accelerometer'][:args.truncate_frames, :]
         gyro = fixed_data['gyroscope'][:args.truncate_frames, :]
 
+    # Compute turn and steering on original video frames
+    turn, steer_value = turn_future_smooth(original_data['speed'],
+        args.stop_future_frames, args.speed_limit_as_stop, args)
+    original_data['turn'] = turn
+    original_data['steer'] = steer_value
+
+    # Compute turn and steering on 15FPS video frames
+    turn, steer_value = turn_future_smooth(speed, args.stop_future_frames,
+        args.speed_limit_as_stop, args)
+    fixed_data['turn'] = turn
+    fixed_data['steer'] = steer_value
+    fixed_data = deepcopy(fixed_data)
+
     # Downsample data
     speed = speed[0::args.temporal_downsample_factor, :]
     time_stamps = time_stamps[0::args.temporal_downsample_factor]
     gps = gps[0::args.temporal_downsample_factor, :]
     acc = acc[0::args.temporal_downsample_factor, :]
     gyro = gyro[0::args.temporal_downsample_factor, :]
-    sampled_data = {
-        'timestamp': time_stamps,
-        'speed': speed,
-        'gps': gps,
-        'accelerometer': acc,
-        'gyroscope': gyro
-    }
 
     # from speed to stop labels
     #stop_label = speed_to_future_has_stop(speed, args.stop_future_frames,
@@ -121,13 +127,22 @@ def get_steer_values(fixed_data):
     # Note that the turning heuristic is tuned for 3Hz video and urban area
     # Note also that stop_future_frames is reused for the turn
     turn, steer_value = turn_future_smooth(speed, args.stop_future_frames,
-                              args.speed_limit_as_stop, args)
+        args.speed_limit_as_stop, args)
+    sampled_data = {
+        'timestamp': time_stamps,
+        'speed': speed,
+        'gps': gps,
+        'accelerometer': acc,
+        'gyroscope': gyro,
+        'turn': turn,
+        'steer': steer_value
+    }
 
     #locs = relative_future_location(
     #    speed, args.stop_future_frames,
     #    args.frame_rate / args.temporal_downsample_factor)
 
-    return sampled_data, turn, steer_value
+    return original_data, fixed_data, sampled_data
 
 
 def process_video_info(video_path, args):
@@ -144,15 +159,15 @@ def process_video_info(video_path, args):
         # if speed is none, the error message is printed in other functions
         return False
 
-    samp_data, turn, steer_value = get_steer_values(deepcopy(fix_data))
+    # orig_data, fix_data, samp_data = get_steer_values(orig_data, fix_data)
     if args.debug:
         import pdb; pdb.set_trace()
 
     # Prepare data to be transformed into csv
     full_data = {
-        'fixed_data': fix_data,
+        # 'fixed_data': fix_data,
         'original_data': orig_data,
-        'sampled_data': samp_data
+        # 'sampled_data': samp_data
     }
     data_to_save = {}
     for data_type in full_data:
@@ -161,6 +176,7 @@ def process_video_info(video_path, args):
             'timestamp': curr_data['timestamp'],
             'speed_x': curr_data['speed'][:, 0],
             'speed_y': curr_data['speed'][:, 1],
+            'linear_speed': curr_data['linear_speed']
             'gps_lat': curr_data['gps'][:, 0],
             'gps_long': curr_data['gps'][:, 1],
             'acceleration_x': curr_data['accelerometer'][:, 0],
@@ -168,21 +184,20 @@ def process_video_info(video_path, args):
             'acceleration_z': curr_data['accelerometer'][:, 2],
             'gyro_x': curr_data['gyroscope'][:, 0],
             'gyro_y': curr_data['gyroscope'][:, 1],
-            'gyro_z': curr_data['gyroscope'][:, 2]
+            'gyro_z': curr_data['gyroscope'][:, 2],
+            # 'turn': curr_data['turn'],
+            # 'steer': curr_data['steer']
         }
 
-    data_to_save['sampled_data']['turn'] = turn
-    data_to_save['sampled_data']['steer'] = steer_value
-
     # Create pandas dataframes with all the data
-    df = pd.DataFrame(data=data_to_save['fixed_data'])
-    df.to_csv(fixed_out_name)
+    # df = pd.DataFrame(data=data_to_save['fixed_data'])
+    # df.to_csv(fixed_out_name)
 
     df = pd.DataFrame(data=data_to_save['original_data'])
     df.to_csv(original_out_name)
 
-    df = pd.DataFrame(data=data_to_save['sampled_data'])
-    df.to_csv(sampled_out_name)
+    # df = pd.DataFrame(data=data_to_save['sampled_data'])
+    # df.to_csv(sampled_out_name)
 
     return True
 
@@ -194,9 +209,9 @@ def parse_path(video_path, args):
     '''
     fd, fname = os.path.split(video_path)
     fprefix = fname.split(".")[0]
-    fixed_out_name = os.path.join(args.output_directory, fprefix + "_fixed.csv")
-    original_out_name = os.path.join(args.output_directory, fprefix + "_original.csv")
-    sampled_out_name = os.path.join(args.output_directory, fprefix + "_sampled.csv")
+    original_out_name = os.path.join(args.output_directory, 'original', fprefix + ".csv")
+    fixed_out_name = os.path.join(args.output_directory, 'fixed', fprefix + "_fixed.csv")
+    sampled_out_name = os.path.join(args.output_directory, 'sampled', fprefix + "_sampled.csv")
 
     # return all sorts of info:
     # video_base_path, video_name_wo_prefix, cache_path, out_tfrecord_path
@@ -218,7 +233,6 @@ def process_videos(args):
 
 
 if __name__ == '__main__':
-
     arg_parser = argparse.ArgumentParser()
 
     arg_parser.add_argument(

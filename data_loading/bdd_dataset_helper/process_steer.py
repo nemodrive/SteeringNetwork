@@ -105,7 +105,7 @@ def turning_heuristics(speed_list, args, speed_limit_as_stop=0):
 
         if course is None or prev is None:
             action[i] = enum['slow_or_stop']
-            course_diff[i] = 9999
+            course_diff[i] = 0
             continue
 
         curr_course_diff = diff(course, prev)
@@ -134,7 +134,6 @@ def turning_heuristics(speed_list, args, speed_limit_as_stop=0):
             if acc_now < args.deceleration_thres:
                 action[i] = enum['slow_or_stop']
                 continue
-
 
     # avoid the initial uncertainty
     action[0] = action[1]

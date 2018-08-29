@@ -28,7 +28,7 @@ train: &train
   max_grad_norm: 40.
   batch_norm_eps: 0.001
   dropout_conv: 0.2
-  dropout_liniar: 0.5 
+  dropout_liniar: 0.5
   criterion: ""
   decay: 0.5
   step_size: 50000
@@ -89,4 +89,4 @@ carla_settings: &carla_settings
   resY: "900"
   fps: "10"
   settings_file: "./Example.CarlaSettings.ini"
-  
+
