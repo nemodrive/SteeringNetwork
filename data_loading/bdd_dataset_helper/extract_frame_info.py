@@ -176,7 +176,8 @@ def process_video_info(video_path, args):
             'timestamp': curr_data['timestamp'],
             'speed_x': curr_data['speed'][:, 0],
             'speed_y': curr_data['speed'][:, 1],
-            'linear_speed': curr_data['linear_speed']
+            'linear_speed': curr_data['linear_speed'],
+            'course': curr_data['course'],
             'gps_lat': curr_data['gps'][:, 0],
             'gps_long': curr_data['gps'][:, 1],
             'acceleration_x': curr_data['accelerometer'][:, 0],

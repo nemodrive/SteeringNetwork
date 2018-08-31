@@ -26,6 +26,25 @@ def run_once(args):
     train_data = data_loader.get_train_loader()
     test_data = data_loader.get_test_loader()
 
+    # import time
+    # print("Start sampling")
+    # for batch_idx, (images, speed, steer_distr, target_vector,
+    #                     mask) in enumerate(train_data):
+    #     print(images.shape, steer_distr)
+    #     break
+    # cnt = 0
+    # start_time = time.time()
+    # for it in train_data:
+    #     (images, speed, steer_distr, cmds) = it
+    #     cnt += 1
+    #     print("Count", cnt, images.shape)
+    #     if cnt == 64:
+    #         break
+
+    # mean_time = (time.time() - start_time) / 64
+    # print(mean_time)
+    # sys.exit(0)
+
     # -- Resume agent and metrics if checkpoints are available
     # TODO Resume
     if cfg.checkpoint != "":
@@ -36,6 +55,8 @@ def run_once(args):
 
     # -- Get agent
     agent = get_agent(cfg.agent)
+
+    sys.exit(0)
 
     # -- Should have some kind of reporting agent
     # TODO Implement reporting agent

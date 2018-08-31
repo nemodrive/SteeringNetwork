@@ -1,5 +1,6 @@
 import cv2
 import math
+import subprocess
 import numpy as np
 import pandas as pd
 import pickle as pkl
@@ -69,8 +70,10 @@ class BDDVDataset(Dataset):
         # Determine which video to extract the sequence of frames from
         video_file_index = self.helper.get_video_index(index)
         bucket_index = index - self.start_buckets[video_file_index]
+        vidsize = self.cfg.data_info.image_shape
+        vidsize = (vidsize[1], vidsize[2], vidsize[0])
         images, target_vectors = self.helper.get_data(video_file_index,
-            bucket_index, self.cfg.frame_seq_len)
+            bucket_index, self.cfg.data_info.frame_seq_len, vidsize)
 
         if self.train:
             for i in range(len(images)):
@@ -79,6 +82,9 @@ class BDDVDataset(Dataset):
         if self.transform is not None:
             for i in range(len(images)):
                 images[i] = self.transform(images[i])
+
+        # Concatenate channels from several images
+        images = images.reshape(*images.shape[1:3], images.shape[3] * self.cfg.data_info.frame_seq_len)
 
         cmd_signals = [t[self.tag_names.index('Control Signal')] for t in target_vectors]
         cmd_signals = [x if x > 2 else 2 for x in cmd_signals]
@@ -103,8 +109,7 @@ class BDDVDataset(Dataset):
             np.copy(self._bins) + 1.0 / len(self._bins), steer_mean_bin,
             self.cfg.dispersion)
 
-        # imgs = [np.transpose(img, (2, 0, 1)) for img in images]
-        return np.transpose(images, (0, 3, 1, 2)), speed / 90.0, \
+        return np.transpose(images, (2, 0, 1)), speed / 90.0, \
                 steer_distribution, cmd_signals
 
     def _regression_batch(self, images, target_vectors, cmd_signals):
@@ -117,7 +122,7 @@ class BDDVDataset(Dataset):
 
         speed = np.array([t[self.tag_names.index('Speed')] for t in target_vectors])
 
-        return np.transpose(image, (0, 3, 1, 2)), speed / 90.0, target_vect, \
+        return np.transpose(image, (2, 0, 1)), speed / 90.0, target_vect, \
                 cmd_signals
 
 
@@ -238,7 +243,7 @@ class DatasetHelper(object):
 
         return l
 
-    def get_data(self, vid_index, bucket_index, nr_frames):
+    def get_data(self, vid_index, bucket_index, nr_frames, frame_size):
         video_items = list(self.video_data.items())
         vid_name = video_items[vid_index][0]
         nr_bucks = self.start_buckets[vid_index + 1] - self.start_buckets[vid_index]
@@ -251,20 +256,31 @@ class DatasetHelper(object):
         # Choose images at random from buckets
         img_indices = []
         for i in range(nr_frames):
-            img_index = (bucket_index + i) * img_per_buck + random.randint(0, img_per_buck)
+            img_index = (bucket_index + i) * img_per_buck + random.randint(0, img_per_buck - 1)
             img_indices.append(img_index)
 
         # Open video and iterate to the desired frames
         images = []
-        vid = cv2.VideoCapture(video_items[vid_index][1][0])
-        cnt = 0
+        meta = self.video_metadata[video_items[vid_index][1][0].split('.')[0].split('/')[-1]]
+        fps = meta['nframes'] / meta['duration']
         for ind in img_indices:
-            while cnt <= ind:
-                cnt += 1
-                ret, img = vid.read()
-                if not ret:
-                    print("Request for bad frame")
-                    return None, None
+            cmd = ['ffmpeg',
+                   '-loglevel', 'fatal',
+                   '-ss', str(ind / fps),
+                   '-i', video_items[vid_index][1][0],
+                   '-vframes', '1',
+                   '-f', 'image2pipe',
+                   '-pix_fmt', 'bgr24',
+                   '-vcodec', 'rawvideo', '-']
+
+            ffmpeg = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            out, err = ffmpeg.communicate()
+
+            if err:
+                print('Bad frame request')
+                return None, None
+
+            img = np.fromstring(out, dtype='uint8').reshape(frame_size)
             images.append(img)
 
         # Get the steering data using the csv info file
@@ -272,8 +288,7 @@ class DatasetHelper(object):
         info_file = video_items[vid_index][1][1]
         df = pd.read_csv(info_file)
         s = df['linear_speed']
-        sx = df['speed_x']
-        sy = df['speed_y']
+        course = df['course']
 
         # Determine the indices of the frames we use for computing the steering
         dist = np.zeros(len(s))
@@ -296,7 +311,7 @@ class DatasetHelper(object):
             moving_ind += 1
 
         # Determine the steering for each video frame selected
-        steer_angles, steer_cmds = self._get_steer(steer_indices, sx, sy, s, self.cfg)
+        steer_angles, steer_cmds = self._get_steer(steer_indices, course, s, self.cfg)
 
         # Construct the target vectors
         target_vectors = []
@@ -312,33 +327,7 @@ class DatasetHelper(object):
 
         return images, target_vectors
 
-    def _get_angle(self, sx, sy):
-        '''Get the angle corresponding to a velocity vector'''
-        pi = math.pi
-        if sy == 0:
-            if sx > 0:
-                course = pi / 2
-            elif sx == 0:
-                course = None
-            else:
-                course = 3 * pi / 2
-            return course
-
-        course = math.atan(sx / sy)
-        if sx >= 0 and sy < 0:
-            # Second quadrant
-            course = pi + course
-        elif sx < 0 and sy < 0:
-            # Third quadrant
-            course = pi + course
-        elif sx < 0 and sy > 0:
-            # Fourth quadrant
-            course = 2 * pi + course
-
-        assert not math.isnan(course)
-        return course
-
-    def _get_steer(self, steer_indices, sx, sy, s, cfg):
+    def _get_steer(self, steer_indices, course, s, cfg):
         '''Determine the steer angle and the steer command'''
         angles = np.zeros(len(steer_indices))
         cmds = np.zeros(len(steer_indices))
@@ -371,13 +360,8 @@ class DatasetHelper(object):
 
             # Compute the angle between the velocity vector of the current
             # frame and the next frame
-            curr_sx = sx[curr_frame]
-            curr_sy = sy[curr_frame]
-            next_sx = sx[next_frame]
-            next_sy = sy[next_frame]
-
-            curr_course = self._get_angle(curr_sx, curr_sy)
-            next_course = self._get_angle(next_sx, next_sy)
+            curr_course = course[curr_frame]
+            next_course = course[next_frame]
             angles[i] = next_course - curr_course
 
             # Decide on the type of action

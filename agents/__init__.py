@@ -1,6 +1,7 @@
 from . import demo_agent
 from . import conditional_imitation_agent
 from . import classification_conditional_imitation_agent
+from . import bddv_agent
 
 AGENTS = {
     "DemoAgent":
@@ -10,6 +11,7 @@ AGENTS = {
     "ClassificationConditionalImitationAgent":
     classification_conditional_imitation_agent.
     ClassificationConditionalImitationAgent,
+    "BDDVAgent": bddv_agent.BDDVAgent
 }
 
 

@@ -86,7 +86,7 @@ class BDDVLoader(DataLoaderBase):
         tag_names = [
             'Acceleration x', 'Acceleration y', 'Acceleration z', 'Gps Lat',
             'Gps Long', 'Gyro x', 'Gyro y', 'Gyro z', 'Speed x', 'Speed y',
-            'Timestamp', 'Linear Speed', 'Steer', 'Control Signal'
+            'Timestamp', 'Linear Speed', 'Steer', 'Control Signal', 'Course'
         ]
 
         self.data = {
@@ -112,8 +112,6 @@ class BDDVLoader(DataLoaderBase):
             train=True,
             transform=self.transformations,
             augmentation=self.augmentation)
-
-        images, speeds, steer_dist, cmds = train_dataset.__getitem__(0)
 
         sampler = self._sampler(
             self._dataset_cfg,

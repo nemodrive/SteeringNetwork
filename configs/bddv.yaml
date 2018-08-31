@@ -7,18 +7,20 @@ title: "Conditonal Imitation Learning"
 plots: "tensorboard" # can be "matplotlib", "tensorboard" or "both"
 
 general:
-  batch_size: &batch_size 120
+  batch_size: &batch_size 64
   use_cuda: &use_cuda no
   seed: 3
 
 data_info: &data_info
-  image_shape: [3, 88, 200]
+  image_shape: [3, 180, 320]
+  frame_seq_len: 1
 
 # Estimator
 model: &model
-  name: "ConditionalImitationModel"
+  name: "BDDVModel"
   type: ""
   hidden_size: 256
+  nr_bins: 180  #use classification or regression for steering
 
 train: &train
   no_epochs: 70
@@ -30,6 +32,7 @@ train: &train
   dropout_conv: 0.2
   dropout_liniar: 0.5
   criterion: ""
+  loss_weights: [0.45, 0.45, 0.1]
   decay: 0.5
   step_size: 50000
   algorithm: Adam
@@ -44,19 +47,21 @@ sampler: &sampler
 dataset: &dataset
   name: "BDDVDataset"
   sampler: *sampler
+  data_info: *data_info
   dataset_path: "/home/alexm/Desktop/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/train/data/"
   info_path: "/home/alexm/Desktop/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/train/info/"
   dataset_eval_path: "/home/alexm/Desktop/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/validation/data/"
   info_eval_path: "/home/alexm/Desktop/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/validation/info/"
+  dataset_test_path: "/home/alexm/Desktop/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/test/data/"
+  info_test_path: "/home/alexm/Desktop/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/test/info/"
   video_metadata_path: "/home/alexm/Desktop/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/video_metadata.pkl"
   video_bucket_ms: 100
-  frame_seq_len: 1
   steer_dist: 5
   speed_limit_as_stop: 0.3
   deceleration_thresh: -3
 
 agent: &agent
-  name: "ConditionalImitationAgent"
+  name: "BDDVAgent"
   type: "No Noise Speed 90 0.1 Brake, Extra Left Prob"
   resume: ""
   model: *model
@@ -77,6 +82,6 @@ data_loader:
   data_info: *data_info
   test_size: 0
   shuffle: yes
-  no_workers: 16
+  no_workers: 8
   data_seed: 314
   batch_size: *batch_size
