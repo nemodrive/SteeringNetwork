@@ -13,7 +13,7 @@ from .data_loader import DataLoaderBase
 from .dataset import get_sampler
 
 
-class BDDVAugmentation(object):
+class BDDVImageAugmentation(object):
     def __init__(self, seed):
         st = lambda aug: iga.Sometimes(0.4, aug)
         oc = lambda aug: iga.Sometimes(0.3, aug)
@@ -49,14 +49,14 @@ class BDDVAugmentation(object):
         return self.seq.augment_image(image)
 
 
-class BDDVLoader(DataLoaderBase):
+class BDDVImageLoader(DataLoaderBase):
     def __init__(self, cfg):
-        super(BDDVLoader, self).__init__(cfg)
-        self.channel, self.image_width, self.image_height = cfg.data_info.image_shape
+        super(BDDVImageLoader, self).__init__(cfg)
+        self.channel, self.image_height, self.image_width = cfg.data_info.image_shape
         self.transformations = self.get_transformations()
         self.augmentation = self.get_augmentation()
         self._info_path = cfg.dataset.info_path
-        self._info_eval_path = cfg.dataset.info_eval_path
+        self._info_path_test = cfg.dataset.info_eval_path
         self._sampler = get_sampler(self._dataset_cfg.sampler)
         self._nr_bins = cfg.model.nr_bins
         self.load_data()
@@ -68,25 +68,27 @@ class BDDVLoader(DataLoaderBase):
 
     def get_augmentation(self):
         return transforms.Compose(
-            [BDDVAugmentation(self._seed)])
+            [BDDVImageAugmentation(self._seed)])
 
     def load_data(self):
         data_train = OrderedDict()
-        video_train = sorted(glob.glob(self._dataset_path + '*.mov'))
+        video_train = os.listdir(self._dataset_path)
         for vid in video_train:
-            vidname = vid.split('/')[-1].split('.')[0]
+            vidname = vid
+            vid = os.path.join(self._dataset_path, vid)
             info = os.path.join(self._info_path, vidname + '.csv')
             data_train[vidname] = (vid, info)
         data_eval = OrderedDict()
-        video_eval = sorted(glob.glob(self._dataset_path_test + '*.mov'))
+        video_eval = os.listdir(self._dataset_path_test)
         for vid in video_eval:
-            vidname = vid.split('/')[-1].split('.')[0]
-            info = os.path.join(self._info_eval_path, vidname + '.csv')
+            vidname = vid
+            vid = os.path.join(self._dataset_path_test, vid)
+            info = os.path.join(self._info_path_test, vidname + '.csv')
             data_eval[vidname] = (vid, info)
         tag_names = [
             'Acceleration x', 'Acceleration y', 'Acceleration z', 'Gps Lat',
             'Gps Long', 'Gyro x', 'Gyro y', 'Gyro z', 'Speed x', 'Speed y',
-            'Timestamp', 'Linear Speed', 'Steer', 'Course', 'Control Signal'
+            'Timestamp', 'Linear Speed', 'Steer', 'Course', 'Steer Angle'
         ]
 
         self.data = {

@@ -50,3 +50,6 @@ class EvalMetric:
     def set(self, val, ep):
         self.val = val
         self.ep = ep
+
+    def get(self):
+        return self.val, self.ep

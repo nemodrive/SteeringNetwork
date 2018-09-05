@@ -63,17 +63,17 @@ class BDDVModel(nn.Module):
         self.conv_block4 = nn.Sequential(
             nn.Conv2d(
                 in_channels=64,
-                out_channels=128,
+                out_channels=64,
                 kernel_size=3,
                 stride=2,
                 padding=0),
-            nn.BatchNorm2d(128, eps=batch_norm_eps),
+            nn.BatchNorm2d(64, eps=batch_norm_eps),
             nn.Dropout(p=self._dropout_conv),
             nn.ReLU())
 
         self.conv_block5 = nn.Sequential(
             nn.Conv2d(
-                in_channels=128,
+                in_channels=64,
                 out_channels=128,
                 kernel_size=3,
                 stride=1,
@@ -85,15 +85,39 @@ class BDDVModel(nn.Module):
         self.conv_block6 = nn.Sequential(
             nn.Conv2d(
                 in_channels=128,
+                out_channels=128,
+                kernel_size=3,
+                stride=2,
+                padding=0),
+            nn.BatchNorm2d(128, eps=batch_norm_eps),
+            nn.Dropout(p=self._dropout_conv),
+            nn.ReLU())
+
+        self.conv_block7 = nn.Sequential(
+            nn.Conv2d(
+                in_channels=128,
+                out_channels=128,
+                kernel_size=3,
+                stride=1,
+                padding=0),
+            nn.BatchNorm2d(128, eps=batch_norm_eps),
+            nn.Dropout(p=self._dropout_conv),
+            nn.ReLU(),
+        )
+
+        self.conv_block8 = nn.Sequential(
+            nn.Conv2d(
+                in_channels=128,
                 out_channels=256,
                 kernel_size=3,
                 stride=1,
                 padding=0),
             nn.BatchNorm2d(256, eps=batch_norm_eps),
             nn.Dropout(p=self._dropout_conv),
-            nn.ReLU())
+            nn.ReLU(),
+        )
 
-        self.conv_block7 = nn.Sequential(
+        self.conv_block9 = nn.Sequential(
             nn.Conv2d(
                 in_channels=256,
                 out_channels=256,
@@ -106,7 +130,7 @@ class BDDVModel(nn.Module):
         )
 
         self.fc0 = nn.Sequential(
-            nn.Linear(in_features=8192, out_features=512, bias=True),
+            nn.Linear(in_features=5632, out_features=512, bias=True),
             nn.Dropout(p=self._dropout_liniar),
             nn.ReLU())
 
@@ -198,9 +222,15 @@ class BDDVModel(nn.Module):
             in_channels=1, out_channels=1, kernel_size=3, stride=1, padding=0)
 
         self.deconv6 = nn.ConvTranspose2d(
-            in_channels=1, out_channels=1, kernel_size=3, stride=1, padding=0)
+            in_channels=1, out_channels=1, kernel_size=3, stride=2, padding=0)
 
         self.deconv7 = nn.ConvTranspose2d(
+            in_channels=1, out_channels=1, kernel_size=3, stride=1)
+
+        self.deconv8 = nn.ConvTranspose2d(
+            in_channels=1, out_channels=1, kernel_size=3, stride=1)
+
+        self.deconv9 = nn.ConvTranspose2d(
             in_channels=1, out_channels=1, kernel_size=3, stride=1)
 
         for m in self.modules():
@@ -230,6 +260,8 @@ class BDDVModel(nn.Module):
         x = self.conv_block5(x)
         x = self.conv_block6(x)
         x = self.conv_block7(x)
+        x = self.conv_block8(x)
+        x = self.conv_block9(x)
 
         #liniarize the features
         x = x.view(x.size(0), -1)
@@ -255,9 +287,11 @@ class BDDVModel(nn.Module):
         x6 = self.conv_block5(x5)
         x7 = self.conv_block6(x6)
         x8 = self.conv_block7(x7)
+        x9 = self.conv_block8(x8)
+        x10 = self.conv_block9(x9)
 
         #liniarize the features
-        x = x8.view(x8.size(0), -1)
+        x = x10.view(x10.size(0), -1)
 
         x = self.fc0(x)
         x = self.fc1(x)
@@ -271,7 +305,15 @@ class BDDVModel(nn.Module):
 
         #compute deconvolution mask
 
-        activation_map = torch.mean(x8, 1).unsqueeze(1)
+        activation_map = torch.mean(x10, 1).unsqueeze(1)
+
+        activation_map = self.deconv9(activation_map)
+        activation_map = torch.mul(activation_map,
+                                   torch.mean(x9, 1).unsqueeze(1))
+
+        activation_map = self.deconv8(activation_map)
+        activation_map = torch.mul(activation_map,
+                                   torch.mean(x8, 1).unsqueeze(1))
 
         activation_map = self.deconv7(activation_map)
         activation_map = torch.mul(activation_map,

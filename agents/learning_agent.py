@@ -42,12 +42,12 @@ class LearningAgent(Printer, SimulatorAgent):
         self._last_train_loss = EvalMetric(
             lower_is_better=True, name="last_train_loss")
         self._last_eval_score = EvalMetric(
-            lower_is_better=False, name="last_eval_score")
+            lower_is_better=True, name="last_eval_score")
 
         self._best_train_loss = EvalMetric(
             lower_is_better=True, name="best_train_loss")
         self._best_eval_score = EvalMetric(
-            lower_is_better=False, name="best_eval_score")
+            lower_is_better=True, name="best_eval_score")
 
         # Dictionary generator for saving data
         self._save_data = [
@@ -73,6 +73,16 @@ class LearningAgent(Printer, SimulatorAgent):
         self._last_train_loss.set_comparison(lower_is_better)
         self._best_train_loss.set_comparison(lower_is_better)
 
+    def get_eval_metrics(self):
+        val, ep = self._last_eval_score.get()
+        best_val, best_ep = self._best_eval_score.get()
+        return ep, val, best_ep, best_val
+
+    def get_train_metrics(self):
+        val, ep = self._last_train_loss.get()
+        best_val, best_ep = self._best_train_loss.get()
+        return ep, val, best_ep, best_val
+
     def session_init(self):
         return self._session_init()
 
@@ -92,6 +102,11 @@ class LearningAgent(Printer, SimulatorAgent):
 
         self._last_train_loss.set(loss, train_epoch)
         self._best_train_loss.update_if_better(loss, train_epoch)
+
+        if not self.cfg.use_progress_bar:
+            ep, last_loss, best_ep, best_loss = self.get_train_metrics()
+            log.info("Last train loss: episode {}, loss {}".format(ep, last_loss))
+            log.info("Best train loss: episode {}, loss {}".format(best_ep, best_loss))
 
         if train_epoch % self._save_freq == 0:
             self.save(prefix=DATA_SAVE_PREFIX + "_{}".format(train_epoch))
@@ -113,6 +128,11 @@ class LearningAgent(Printer, SimulatorAgent):
         self._last_eval_score.set(score, train_epoch)
         is_best_standard = self._best_eval_score.update_if_better(
             score, train_epoch)
+
+        if not self.cfg.use_progress_bar:
+            ep, last_score, best_ep, best_score = self.get_eval_metrics()
+            log.info("Last test loss: episode {}, loss {}".format(ep, last_score))
+            log.info("Best test loss: episode {}, loss {}".format(best_ep, best_score))
 
         if self._save_best:
             if is_best is None:
@@ -198,6 +218,12 @@ class LearningAgent(Printer, SimulatorAgent):
         _optimizer = getattr(torch.optim, algorithm)
         optim_args = vars(algorithm_args)
         return _optimizer(model.parameters(), **optim_args)
+
+    @staticmethod
+    def get_sched(algorithm, algorithm_args, optimizer):
+        _scheduler = getattr(torch.optim.lr_scheduler, algorithm)
+        sched_args = vars(algorithm_args)
+        return _scheduler(optimizer, **sched_args)
 
     def _start_tensorboard(self, kill_other=True):
         if kill_other:

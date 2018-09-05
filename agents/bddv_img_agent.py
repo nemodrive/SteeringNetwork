@@ -4,7 +4,6 @@ import sys
 import math
 import torch
 import pandas as pd
-from torch.optim.lr_scheduler import StepLR
 from logbook import Logger
 
 from .learning_agent import LearningAgent
@@ -18,7 +17,7 @@ sys.path.append('/home/tempuser/workspace/alexm/SteeringNetwork/data_loading/dat
 from dataset_helper import DatasetHelper
 
 
-NAMESPACE = 'bddv_agent'  # ++ Identifier name for logging
+NAMESPACE = 'bddv_img_agent'  # ++ Identifier name for logging
 log = Logger(NAMESPACE)
 
 tag_names = [
@@ -39,11 +38,11 @@ def to_cuda(data, use_cuda):
     return input_
 
 
-class BDDVAgent(
+class BDDVImageAgent(
         LearningAgent):  # ++ Extend Learning agent
 
     def __init__(self, cfg):
-        super(BDDVAgent, self).__init__(cfg)
+        super(BDDVImageAgent, self).__init__(cfg)
 
         use_cuda = self._use_cuda  # ++ Parent class already saves some configuration variables
         # ++ All parent variables should start with _.
@@ -72,8 +71,8 @@ class BDDVAgent(
         # -- Initialize optimizers
         self.optimizer = self.get_optim(cfg.train.algorithm,
                                         cfg.train.algorithm_args, self.model)
-        self.scheduler = StepLR(self.optimizer, cfg.train.step_size,
-                                cfg.train.decay)
+        self.scheduler = self.get_sched(cfg.train.scheduler,
+                                        cfg.train.scheduler_args, self.optimizer)
         self._optimizers.append(
             self.optimizer)  # -- Add models & optimizers to base for saving
         # -- Change settings from parent class
@@ -104,7 +103,7 @@ class BDDVAgent(
 
         ################################################
 
-        super(BDDVAgent, self).__end_init__()
+        super(BDDVImageAgent, self).__end_init__()
 
     def _session_init(self):
         if self._is_train:
@@ -124,8 +123,9 @@ class BDDVAgent(
         branches = self.model.get_branches(use_cuda)
         train_loss = 0
 
-        progress_bar = ProgressBar(
-            'Loss: %(loss).3f', dict(loss=0), len(data_loader))
+        if self.cfg.use_progress_bar:
+            progress_bar = ProgressBar(
+                'Loss: %(loss).3f', dict(loss=0), len(data_loader))
 
         for batch_idx, (images, speed, steer_distr, mask) in enumerate(data_loader):
             optimizer.zero_grad()
@@ -151,28 +151,18 @@ class BDDVAgent(
             train_loss += loss.item()
 
             optimizer.step()
-            scheduler.step()
-            progress_bar.update(
-                batch_idx, dict(loss=(train_loss / (batch_idx + 1))))
+            if self.cfg.train.scheduler == 'ReduceLROnPlateau':
+                scheduler.step(loss)
+            else:
+                scheduler.step()
+            if self.cfg.use_progress_bar:
+                progress_bar.update(
+                    batch_idx, dict(loss=(train_loss / (batch_idx + 1))))
 
             self.loss_values_train.append(loss.item())
 
-            ################### TensorBoard Shit ################################
-
-            #loss function
-
-            #self._writer.add_scalar(
-            #    "loss_function", loss.item(),
-            #    batch_idx + self._train_epoch * len(data_loader))
-
-            #model
-            #if self._tensorboard_model is False:
-            #    self._tensorboard_model = True
-            #    self._writer.add_graph(model, (images, speed_target))
-
-            #####################################################################
-
-        progress_bar.finish()
+        if self.cfg.use_progress_bar:
+            progress_bar.finish()
 
         return train_loss, {}
 
@@ -184,7 +174,7 @@ class BDDVAgent(
         loss1 = loss1_steer
 
         loss2 = (speed_outputs - speed_target) * (speed_outputs - speed_target)
-        loss2 = loss2.sum()# / branch_outputs.shape[0]
+        loss2 = loss2.sum()
 
         loss = (0.95 * loss1 + 0.05 * loss2) / branch_outputs.shape[0]
         return loss
@@ -200,8 +190,9 @@ class BDDVAgent(
         branches = self.model.get_branches(use_cuda)
         test_loss = 0
 
-        progress_bar = ProgressBar(
-            'Loss: %(loss).3f', dict(loss=0), len(data_loader))
+        if self.cfg.use_progress_bar:
+            progress_bar = ProgressBar(
+                'Loss: %(loss).3f', dict(loss=0), len(data_loader))
 
         for batch_idx, (images, speed, steer_distr, mask) in enumerate(data_loader):
             images = to_cuda(images, use_cuda)
@@ -227,10 +218,12 @@ class BDDVAgent(
 
             self.loss_values_test.append(loss.item())
 
-            progress_bar.update(
-                batch_idx, dict(loss=(test_loss / (batch_idx + 1))))
+            if self.cfg.use_progress_bar:
+                progress_bar.update(
+                    batch_idx, dict(loss=(test_loss / (batch_idx + 1))))
 
-        progress_bar.finish()
+        if self.cfg.use_progress_bar:
+            progress_bar.finish()
 
         return test_loss, None, {}
 
@@ -328,21 +321,16 @@ class BDDVAgent(
 
         general_mse = steer_mse = 0
 
-        # Determine steering angles and commands
-        helper = DatasetHelper(None, None, None, self.cfg.dataset)
-        frame_indices = range(len(info))
-        course = info['course']
-        speed = info['speed']
-        angles, cmds = helper.get_steer(frame_indices, course, speed)
+        # Get steering angles and commands
+        angles = info['steer_angle']
+        cmds = info['steer']
 
-        # Open video to read frames
-        vid = cv2.VideoCapture(video_file)
+        # Iterate throgh all video frames
+        frames = os.listdir(file_name)
 
-        for index in range(nr_images):
-            ret, frame = vid.read()
-            if not ret:
-                print('Could not retrieve frame')
-                return None, None
+        for frame in frames:
+            file = os.path.join(file_name, frame)
+            frame = cv2.imread(file)
 
             gt_speed = info['speed'][index]
             gt_steer = angles[index]
@@ -365,10 +353,8 @@ class BDDVAgent(
 
             previous_speed = gt_speed
 
-        vid.release()
-
-        general_mse /= float(nr_images)
-        steer_mse /= float(nr_images)
+        general_mse /= nr_images
+        steer_mse /= nr_images
 
         return general_mse, steer_mse
 
@@ -379,7 +365,7 @@ class BDDVAgent(
         data_files = sorted(os.listdir(self.cfg.dataset.dataset_test_path))
         video_files = []
         for file in data_files:
-            info_file = file.split('.')[0] + '.csv'
+            info_file = file + '.csv'
             video_files.append((os.path.join(self.cfg.dataset.dataset_test_path, file),
                 os.path.join(self.cfg.dataset.info_test_path, info_file)))
         eval_results = []
@@ -513,7 +499,7 @@ class BDDVAgent(
 
     def _resume(self, agent_check_point_path, saved_data):
         """
-        Custom resume scripts should be implemented here
+        Custom resume scripts should pe implemented here
         :param agent_check_point_path: Path of the checkpoint resumed
         :param saved_data: loaded checkpoint data (dictionary of variables)
         """

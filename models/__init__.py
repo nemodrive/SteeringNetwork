@@ -3,6 +3,7 @@ from . import cloning_nvidia_model
 from . import cloning_simple_model
 from . import conditional_imitation_model
 from . import classification_conditional_imitation_model
+from . import bddv_model
 """ Each model script should have the method get_models() which returns a list of models """
 
 ALL_MODELS = {
@@ -14,6 +15,8 @@ ALL_MODELS = {
     conditional_imitation_model,
     "ClassificationConditionalImitationModel":
     classification_conditional_imitation_model,
+    "BDDVModel":
+    bddv_model
 }
 
 

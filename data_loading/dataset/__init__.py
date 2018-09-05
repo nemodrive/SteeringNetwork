@@ -2,16 +2,19 @@ from .udacity_image_dataset import UdacityImageSteerDataset
 from .conditional_imitation_dataset import ConditionalImitationLearningDataset
 from .conditional_imitation_dataset import ConditionalImitationLearningSampler
 from .bddv_dataset import BDDVDataset, BDDVSampler
+from .bddv_img_dataset import BDDVImageDataset, BDDVImageSample
 
 DATA_SET = {
     "UdacityImageSteerDataset": UdacityImageSteerDataset,
     "ConditionalImitationLearningDataset": ConditionalImitationLearningDataset,
-    "BDDVDataset": BDDVDataset
+    "BDDVDataset": BDDVDataset,
+    "BDDVImageDataset": BDDVImageDataset
 }
 
 SAMPLER = {
     "ConditionalImitationLearningSampler": ConditionalImitationLearningSampler,
-    "BDDVSampler": BDDVSampler
+    "BDDVSampler": BDDVSampler,
+    "BDDVImageSampler": BDDVImageSampler
 }
 
 

@@ -1,17 +1,11 @@
-import cv2
-import math
-import subprocess
 import numpy as np
 import pandas as pd
 import pickle as pkl
-from collections import OrderedDict
 from torch.utils.data import Dataset
 from torch.utils.data.sampler import Sampler
 
-from ..image_tools import *
+from dataset_helper import DatasetHelper
 import random
-
-NR_IMAGES_PER_FILE = 200
 
 
 def gaussian_distribution(x, mean, div):
@@ -72,8 +66,15 @@ class BDDVDataset(Dataset):
         bucket_index = index - self.start_buckets[video_file_index]
         vidsize = self.cfg.data_info.image_shape
         vidsize = (vidsize[1], vidsize[2], vidsize[0])
-        images, target_vectors = self.helper.get_data(video_file_index,
-            bucket_index, self.cfg.data_info.frame_seq_len, vidsize)
+        images, target_vectors = None, None
+        no_fails = -1
+        while images is None or target_vectors is None:
+            no_fails += 1
+            images, target_vectors = self.helper.get_data(video_file_index,
+                bucket_index, self.cfg.data_info.frame_seq_len, vidsize)
+            if no_fails == 5:
+                print("Failed too many times to retrieve a frame")
+                return None
 
         if self.train:
             for i in range(len(images)):
@@ -84,10 +85,11 @@ class BDDVDataset(Dataset):
                 images[i] = self.transform(images[i])
 
         # Concatenate channels from several images
-        images = images.reshape(*images.shape[1:3], images.shape[3] * self.cfg.data_info.frame_seq_len)
+        images = images.reshape(images.shape[1], images.shape[2],
+                images.shape[3] * self.cfg.data_info.frame_seq_len)
 
         cmd_signals = [t[self.tag_names.index('Control Signal')] for t in target_vectors]
-        cmd_signals = [x if x > 2 else 2 for x in cmd_signals]
+        cmd_signals = np.array(cmd_signals, dtype=np.int)
 
         return self._batch(images, target_vectors, cmd_signals)
 
@@ -101,7 +103,7 @@ class BDDVDataset(Dataset):
         speed = np.array([t[self.tag_names.index('Linear Speed')] for t in target_vectors])
 
         # Compute steer distribution as a gaussian
-        steer = np.array([t[self.tag_names.index('Steer')] for t in target_vectors])
+        steer = np.array([t[self.tag_names.index('Control Signal')] for t in target_vectors])
         steer_bin_no = np.digitize(steer, self._bins)
         steer_mean_bin = self._bins[steer_bin_no - 1] + 1.0 / len(self._bins)
 
@@ -109,18 +111,18 @@ class BDDVDataset(Dataset):
             np.copy(self._bins) + 1.0 / len(self._bins), steer_mean_bin,
             self.cfg.dispersion)
 
-        return np.transpose(images, (2, 0, 1)), speed / 90.0, \
+        return np.transpose(images, (2, 0, 1)), speed / 80.0, \
                 steer_distribution, cmd_signals
 
     def _regression_batch(self, images, target_vectors, cmd_signals):
         control_cmds = []
 
-        control_cmds.append(self.tag_names.index('Steer'))
+        control_cmds.append(self.tag_names.index('Control Signal'))
         # control_cmds.append(self.tag_names.index('Gas'))
         # control_cmds.append(self.tag_names.index('Brake'))
         target_vect = np.array([t[control_cmds] for t in target_vectors])
 
-        speed = np.array([t[self.tag_names.index('Speed')] for t in target_vectors])
+        speed = np.array([t[self.tag_names.index('Linear Speed')] for t in target_vectors])
 
         return np.transpose(image, (2, 0, 1)), speed / 90.0, target_vect, \
                 cmd_signals
@@ -212,174 +214,3 @@ class BDDVSampler(Sampler):
                         max_cmd = k
                 self.samples_cmd[max_cmd].append(index)
                 index += 1
-
-
-class DatasetHelper(object):
-    def __init__(self, video_data, start_buckets, video_metadata, cfg):
-        self.video_data = video_data
-        self.start_buckets = start_buckets
-        self.video_metadata = video_metadata
-        self.cfg = cfg
-        self.turn_str2int = {
-            'straight': 0,
-            'slow_or_stop': 1,
-            'turn_left': 2,
-            'turn_right': 3,
-            'turn_left_slight': 4,
-            'turn_right_slight': 5,
-        }
-
-    def get_video_index(self, bucket_index):
-        '''Do a binary search over the start bucket indices to find which video
-        the bucket_index belongs to'''
-        l, r = 0, len(self.start_buckets) - 1
-
-        while l + 1 < r:
-            m = (l + r) // 2
-            if bucket_index >= self.start_buckets[m]:
-                l = m
-            else:
-                r = m
-
-        return l
-
-    def get_data(self, vid_index, bucket_index, nr_frames, frame_size):
-        video_items = list(self.video_data.items())
-        vid_name = video_items[vid_index][0]
-        nr_bucks = self.start_buckets[vid_index + 1] - self.start_buckets[vid_index]
-        img_per_buck = self.video_metadata[vid_name]['nframes'] // nr_bucks
-
-        # Fix bucket start position to be able to extract nr_frames
-        if bucket_index + nr_frames > self.start_buckets[vid_index + 1]:
-            bucket_index = self.start_buckets[vid_index + 1] - nr_frames
-
-        # Choose images at random from buckets
-        img_indices = []
-        for i in range(nr_frames):
-            img_index = (bucket_index + i) * img_per_buck + random.randint(0, img_per_buck - 1)
-            img_indices.append(img_index)
-
-        # Open video and iterate to the desired frames
-        images = []
-        meta = self.video_metadata[video_items[vid_index][1][0].split('.')[0].split('/')[-1]]
-        fps = meta['nframes'] / meta['duration']
-        for ind in img_indices:
-            cmd = ['ffmpeg',
-                   '-loglevel', 'fatal',
-                   '-ss', str(ind / fps),
-                   '-i', video_items[vid_index][1][0],
-                   '-vframes', '1',
-                   '-f', 'image2pipe',
-                   '-pix_fmt', 'bgr24',
-                   '-vcodec', 'rawvideo', '-']
-
-            ffmpeg = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            out, err = ffmpeg.communicate()
-
-            if err:
-                print('Bad frame request')
-                return None, None
-
-            img = np.fromstring(out, dtype='uint8').reshape(frame_size)
-            images.append(img)
-
-        # Get the steering data using the csv info file
-        steer_dist = self.cfg.steer_dist
-        info_file = video_items[vid_index][1][1]
-        df = pd.read_csv(info_file)
-        s = df['linear_speed']
-        course = df['course']
-
-        # Determine the indices of the frames we use for computing the steering
-        dist = np.zeros(len(s))
-        time_unit = self.video_metadata[vid_name]['duration'] / self.video_metadata[vid_name]['nframes']
-        curr_ind = img_indices[0] + 1
-        while curr_ind < len(s):
-            if curr_ind > img_indices[-1] and dist[curr_ind] - dist[img_indices[-1]] > steer_dist:
-                break
-            dist[curr_ind] = dist[curr_ind - 1] + s[curr_ind - 1] * time_unit
-            curr_ind += 1
-
-        steer_indices = np.zeros((len(img_indices), 2))
-        steer_indices[:, 1] = img_indices
-        moving_ind = img_indices[0] + 1
-        steer_ind = 0
-        while steer_ind < len(img_indices) and moving_ind < len(s):
-            if dist[moving_ind] - dist[img_indices[steer_ind]] >= steer_dist:
-                steer_indices[steer_ind, 0] = moving_ind
-                steer_ind += 1
-            moving_ind += 1
-
-        # Determine the steering for each video frame selected
-        steer_angles, steer_cmds = self._get_steer(steer_indices, course, s, self.cfg)
-
-        # Construct the target vectors
-        target_vectors = []
-        for i in range(len(images)):
-            target_vector = list(df.iloc[img_indices[i]])
-            target_vector.append(steer_angles[i])
-            target_vector.append(steer_cmds[i])
-            target_vectors.append(target_vector)
-
-        # Convert outputs to numpy arrays
-        images = np.array(images, dtype=np.float)
-        target_vectors = np.array(target_vectors)
-
-        return images, target_vectors
-
-    def _get_steer(self, steer_indices, course, s, cfg):
-        '''Determine the steer angle and the steer command'''
-        angles = np.zeros(len(steer_indices))
-        cmds = np.zeros(len(steer_indices))
-        enum = self.turn_str2int
-
-        for i in range(len(steer_indices)):
-            next_frame, curr_frame = steer_indices[i]
-            if next_frame == 0:
-                if i == 0:
-                    break
-                else:
-                    steer_indices[i, 0] = steer_indices[i - 1, 0]
-
-            # Check if the current state is stop
-            if s[curr_frame] < cfg.speed_limit_as_stop:
-                angles[i] = 0
-                cmds[i] = enum['slow_or_stop']
-                continue
-
-            # Check if the next state is stop
-            if s[next_frame] < cfg.speed_limit_as_stop:
-                angles[i] = 0
-                cmds[i] = enum['slow_or_stop']
-                continue
-
-            # Angle thresholds
-            thresh_low = (2 * math.pi / 360) * 2
-            thresh_high = (2 * math.pi / 360) * 180
-            thresh_slight_low = (2 * math.pi / 360) * 5
-
-            # Compute the angle between the velocity vector of the current
-            # frame and the next frame
-            curr_course = course[curr_frame]
-            next_course = course[next_frame]
-            angles[i] = next_course - curr_course
-
-            # Decide on the type of action
-            if s[next_frame] - s[curr_frame] < cfg.deceleration_thresh:
-                cmds[i] = enum['slow_or_stop']
-            elif thresh_low < angles[i] < thresh_high:
-                if thresh_slight_low < angles[i]:
-                    cmds[i] = enum['turn_right']
-                else:
-                    cmds[i] = enum['turn_right_slight']
-            elif -thresh_high < angles[i] < -thresh_low:
-                if angles[i] < -thresh_slight_low:
-                    cmds[i] = enum['turn_left']
-                else:
-                    cmds[i] = enum['turn_left_slight']
-            elif angles[i] < -thresh_high or thresh_high < angles[i]:
-                cmds[i] = enum['slow_or_stop']
-            else:
-                cmds[i] = enum['straight']
-
-        return angles, cmds
