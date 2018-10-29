@@ -84,7 +84,7 @@ agent: &agent
   save_freq: 2
   save_best: yes
   save_best_freq_lim: 5
-  use_progress_bar: no
+  use_progress_bar: yes
 
 data_loader:
   name: "BDDVImageLoader"

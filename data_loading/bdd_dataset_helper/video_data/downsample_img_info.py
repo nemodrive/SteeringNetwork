@@ -19,7 +19,7 @@ def downsample(info_name, sample_rate, info_file, out_dir):
 
 if __name__ == '__main__':
     arg_parser = ArgumentParser()
-    arg_parser.add_argument('--info_dir',
+    arg_parser.add_argument('--data_dir',
         type=str,
         default='train/info',
         help='path to directory containing csv info files')
@@ -27,10 +27,10 @@ if __name__ == '__main__':
         type=int,
         default=3,
         help='select one in sample_rate frames')
-    arg_parser.add_argument('--out_dir',
+    arg_parser.add_argument('--output_dir',
         type=str,
         default='train/img_info',
-        help='path to the directory where to stored downsampled info')
+        help='path to the directory where to store downsampled info')
 
     args = arg_parser.parse_args()
 

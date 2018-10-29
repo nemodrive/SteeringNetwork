@@ -73,6 +73,9 @@ class LearningAgent(Printer, SimulatorAgent):
         self._last_train_loss.set_comparison(lower_is_better)
         self._best_train_loss.set_comparison(lower_is_better)
 
+    def get_train_epoch(self):
+        return self._train_epoch
+
     def get_eval_metrics(self):
         val, ep = self._last_eval_score.get()
         best_val, best_ep = self._best_eval_score.get()

@@ -124,7 +124,7 @@ class BDDVDataset(Dataset):
 
         speed = np.array([t[self.tag_names.index('Linear Speed')] for t in target_vectors])
 
-        return np.transpose(image, (2, 0, 1)), speed / 90.0, target_vect, \
+        return np.transpose(image, (2, 0, 1)), speed / 80.0, target_vect, \
                 cmd_signals
 
 

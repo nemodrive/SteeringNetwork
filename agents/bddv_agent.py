@@ -312,7 +312,7 @@ class BDDVAgent(
         if self.cfg.activations:
             self._show_activation_image(activation_map, np.copy(image_raw))
 
-        output = braches[cmd](inter_output)
+        output = branches[cmd](inter_output)
 
         steer_angle = self._get_steer_from_bins(output)
         speed_output = speed_output.data.cpu()[0].numpy()
@@ -324,7 +324,7 @@ class BDDVAgent(
         info = pd.read_csv(info_file)
 
         nr_images = len(info)
-        previous_speed = info['speed'][0]
+        previous_speed = info['linear_speed'][0]
 
         general_mse = steer_mse = 0
 
@@ -332,8 +332,8 @@ class BDDVAgent(
         helper = DatasetHelper(None, None, None, self.cfg.dataset)
         frame_indices = range(len(info))
         course = info['course']
-        speed = info['speed']
-        angles, cmds = helper.get_steer(frame_indices, course, speed)
+        linear_speed = info['linear_speed']
+        angles, cmds = helper.get_steer(frame_indices, course, linear_speed)
 
         # Open video to read frames
         vid = cv2.VideoCapture(video_file)
@@ -344,7 +344,7 @@ class BDDVAgent(
                 print('Could not retrieve frame')
                 return None, None
 
-            gt_speed = info['speed'][index]
+            gt_speed = linear_speed[index]
             gt_steer = angles[index]
 
             predicted_steer, predicted_speed = self.run_1step(

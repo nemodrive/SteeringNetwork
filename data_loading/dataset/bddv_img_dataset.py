@@ -1,11 +1,14 @@
 import os
 import cv2
+import math
 import random
 import numpy as np
 import pandas as pd
 import pickle as pkl
 from torch.utils.data import Dataset
 from torch.utils.data.sampler import Sampler
+
+import matplotlib.pyplot as plt
 
 
 def gaussian_distribution(x, mean, div):
@@ -48,6 +51,16 @@ class BDDVImageDataset(Dataset):
             self.len += len(os.listdir(self.image_data[key][0]))
         self.start_frames.append(self.len)
 
+#        for key in self.image_data:
+#            nframes = len(os.listdir(self.image_data[key][0]))
+#            info = pd.read_csv(self.image_data[key][1])
+#            print(self.image_data[key][0].split('/')[-1])
+#            for i in range(nframes):
+#                frame = cv2.imread(os.path.join(self.image_data[key][0], '{}.jpg'.format(i)))
+#                print(info['course'][i])
+#                plt.imshow(frame)
+#                plt.show()
+
     def __len__(self):
         return self.len
 
@@ -55,9 +68,11 @@ class BDDVImageDataset(Dataset):
         # Determine which video to extract the sequence of frames from
         video_file_index = self._get_video_index(index)
         frame_index = index - self.start_frames[video_file_index]
+
         # Fix frame number to prevent overflow
         if index + self.cfg.data_info.frame_seq_len > self.start_frames[video_file_index + 1]:
             frame_index -= index + self.cfg.data_info.frame_seq_len - self.start_frames[video_file_index + 1]
+
         # Get frames and frame info
         viditems = list(self.image_data.items())[video_file_index]
         vidname = viditems[0]
@@ -72,13 +87,13 @@ class BDDVImageDataset(Dataset):
             target_vectors.append(info)
         images = np.array(images, dtype=np.float)
 
-        if self.train:
-            for i in range(len(images)):
-                images[i] = self.augmentation(images[i])
+        # if self.train:
+        #     for i in range(len(images)):
+        #         images[i] = self.augmentation(images[i])
 
-        if self.transform is not None:
-            for i in range(len(images)):
-                images[i] = self.transform(images[i])
+        # if self.transform is not None:
+        #     for i in range(len(images)):
+        #         images[i] = self.transform(images[i])
 
         # Concatenate channels from several images
         images = images.reshape(self.image_height, self.image_width,
@@ -86,6 +101,11 @@ class BDDVImageDataset(Dataset):
 
         cmd_signals = [t[self.tag_names.index('Steer')] for t in target_vectors]
         cmd_signals = np.array(cmd_signals, dtype=np.int)
+
+        # print("Steer", cmd_signals, np.array([t[self.tag_names.index('Steer Angle')] * 180 / math.pi for t in target_vectors]))
+        # print("Course", np.array([t[self.tag_names.index('Course')] * 180 / math.pi for t in target_vectors]))
+        # plt.imshow(np.array(images, dtype=np.int))
+        # plt.show()
 
         return self._batch(images, target_vectors, cmd_signals)
 
@@ -106,14 +126,27 @@ class BDDVImageDataset(Dataset):
     def _clasification_batch(self, images, target_vectors, cmd_signals):
         speed = np.array([t[self.tag_names.index('Linear Speed')] for t in target_vectors])
 
+        def normalize_angle(x):
+            x /= math.pi / 2
+            x = min(1, max(-1, x))
+            return x
+
         # Compute steer distribution as a gaussian
-        steer = np.array([t[self.tag_names.index('Steer')] for t in target_vectors])
+        # steer_cmd = np.array([t[self.tag_names.index('Steer')] for t in target_vectors])
+        steer = np.array([normalize_angle(t[self.tag_names.index('Steer Angle')]) for t in target_vectors])
         steer_bin_no = np.digitize(steer, self._bins)
         steer_mean_bin = self._bins[steer_bin_no - 1] + 1.0 / len(self._bins)
 
         steer_distribution = gaussian_distribution(
             np.copy(self._bins) + 1.0 / len(self._bins), steer_mean_bin,
             self.cfg.dispersion)
+
+        # print("Steer and steer bin", steer_cmd, steer, steer_bin_no)
+        # plt.figure(1)
+        # plt.imshow(np.array(images, dtype=np.int))
+        # plt.figure(2)
+        # plt.plot(np.copy(self._bins) + 1.0 / len(self._bins), steer_distribution)
+        # plt.show()
 
         return np.transpose(images, (2, 0, 1)), speed / 80.0, \
                 steer_distribution, cmd_signals

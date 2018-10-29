@@ -212,7 +212,8 @@ def get_interpolated_acc(res, nr_frames):
 
         return acc
 
-    fixed = interpolate(res, tot_ms * HZ // 1000, 1000.0 / HZ)
+    fixed = None
+    # fixed = interpolate(res, tot_ms * HZ // 1000, 1000.0 / HZ)
     original = interpolate(res, nr_frames, tot_ms / nr_frames)
 
     return fixed, original
@@ -257,7 +258,8 @@ def get_interpolated_gyro(res, nr_frames):
 
         return gyro
 
-    fixed = interpolate(res, tot_ms * HZ // 1000, 1000.0 / HZ)
+    fixed = None
+    # fixed = interpolate(res, tot_ms * HZ // 1000, 1000.0 / HZ)
     original = interpolate(res, nr_frames, tot_ms / nr_frames)
 
     return fixed, original
@@ -270,10 +272,11 @@ def get_interpolated_loc(res, nr_frames):
         return np.array([math.sin(t) * speed, math.cos(t) * speed])
 
     # Interpolate timestamp, speed and gps
-    def interpolate(speed, latitude, longitude, res, nout, time_unit):
+    def interpolate(speed, latitude, longitude, course, res, nout, time_unit):
         tstamp_out = np.zeros((nout,), dtype=np.int64)
         speed_out = np.zeros((nout, 2), dtype=np.float32)
         gps_out = np.zeros((nout, 2), dtype=np.float32)
+        course_out = np.zeros((nout,), dtype=np.float32)
         # If time is t second, there should be t+1 points
         last_start = 0
         ts = res['timestamp']
@@ -287,16 +290,31 @@ def get_interpolated_loc(res, nr_frames):
             if last_start + 1 == len(ts):
                 speed_out[i, :] = speed[last_start]
                 gps_out[i, :] = latitude[last_start], longitude[last_start]
+                course_out[i] = course[last_start]
             elif timenow <= ts[0]:
                 speed_out[i, :] = speed[0]
                 gps_out[i, :] = latitude[0], longitude[0]
+                course_out[i] = course[0]
             else:
+                # Compute the speed components
                 time1 = timenow - ts[last_start]
                 time2 = ts[last_start + 1] - timenow
                 r1 = time2 / (time1 + time2)
                 r2 = time1 / (time1 + time2)
                 inter = r1 * speed[last_start, :] + r2 * speed[last_start + 1, :]
                 speed_out[i, :] = inter
+
+                # Compute the course
+                curr_course = course[last_start]
+                next_course = course[last_start + 1]
+                if next_course - curr_course < -180:
+                    next_course += 360
+                elif next_course - curr_course > 180:
+                    curr_course += 360
+                course_out[i] = r1 * curr_course + r2 * next_course
+                if course_out[i] > 360:
+                    course_out[i] -= 360
+
                 # Compute latitude and longitude
                 lat_avg_speed = (speed[last_start + 1, 1] + speed[last_start, 1]) / 2
                 lng_avg_speed = (speed[last_start + 1, 0] + speed[last_start, 0]) / 2
@@ -324,7 +342,7 @@ def get_interpolated_loc(res, nr_frames):
                 new_lng = longitude[last_start] + delta_lng
                 gps_out[i, :] = new_lat, new_lng
 
-        return tstamp_out, speed_out, gps_out
+        return tstamp_out, speed_out, gps_out, course_out
 
     course = res['course']
     speed0 = res['speed']
@@ -347,20 +365,20 @@ def get_interpolated_loc(res, nr_frames):
 
     tot_ms = res['endTime'] - res['startTime']
     # Get fixed frame rate stats
-    nout = tot_ms * HZ // 1000
-    tstamp_hz, speed_hz, gps_hz = \
-        interpolate(speed, latitude, longitude, res, nout, 1000.0 / HZ)
+    # nout = tot_ms * HZ // 1000
+    # tstamp_hz, speed_hz, gps_hz, course_hz = \
+    #     interpolate(speed, latitude, longitude, course, res, nout, 1000.0 / HZ)
 
     # Get stats for each frame
-    tstamp_orig, speed_orig, gps_orig = \
-        interpolate(speed, latitude, longitude, res, nr_frames, tot_ms / nr_frames)
+    tstamp_orig, speed_orig, gps_orig, course_orig = \
+        interpolate(speed, latitude, longitude, course, res, nr_frames, tot_ms / nr_frames)
 
     fixed = {
-        'timestamp': tstamp_hz,
-        'speed': speed_hz,
-        'linear_speed': np.linalg.norm(speed_hz, axis=1),
-        'course': course_hz,
-        'gps': gps_hz
+        # 'timestamp': tstamp_hz,
+        # 'speed': speed_hz,
+        # 'linear_speed': np.linalg.norm(speed_hz, axis=1),
+        # 'course': course_hz,
+        # 'gps': gps_hz
     }
     original = {
         'timestamp': tstamp_orig,
@@ -389,8 +407,8 @@ def get_interpolated_sensors(json_path, video_filename, nr_frames):
     if fixed_loc is None or original_loc is None:
         print("{} has bad localization".format(video_filename))
         return None, None, -1
-    for key in fixed_loc:
-        fixed_data[key] = fixed_loc[key]
+    for key in original_loc:
+        # fixed_data[key] = fixed_loc[key]
         original_data[key] = original_loc[key]
 
     # Get accelerometer valus for each frame
@@ -398,7 +416,7 @@ def get_interpolated_sensors(json_path, video_filename, nr_frames):
     if res is None:
         return None, None, -1
     fixed_acc, original_acc = get_interpolated_acc(res, nr_frames)
-    fixed_data['accelerometer'] = fixed_acc
+    # fixed_data['accelerometer'] = fixed_acc
     original_data['accelerometer'] = original_acc
 
     # Get gyroscope values for each frame
@@ -406,7 +424,7 @@ def get_interpolated_sensors(json_path, video_filename, nr_frames):
     if res is None:
         return None, None, -1
     fixed_gyro, original_gyro = get_interpolated_gyro(res, nr_frames)
-    fixed_data['gyroscope'] = fixed_gyro
+    # fixed_data['gyroscope'] = fixed_gyro
     original_data['gyroscope'] = original_gyro
 
     return fixed_data, original_data, 0

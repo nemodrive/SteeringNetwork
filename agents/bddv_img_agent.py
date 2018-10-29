@@ -120,12 +120,13 @@ class BDDVImageAgent(
         use_cuda = self._use_cuda
         model = self.model
         criterion = self._get_criterion
+        # Remember that the first branch is the speed branch
         branches = self.model.get_branches(use_cuda)
         train_loss = 0
 
         if self.cfg.use_progress_bar:
             progress_bar = ProgressBar(
-                'Loss: %(loss).3f', dict(loss=0), len(data_loader))
+                'Loss: %(loss).5f', dict(loss=0), len(data_loader))
 
         for batch_idx, (images, speed, steer_distr, mask) in enumerate(data_loader):
             optimizer.zero_grad()
@@ -143,9 +144,14 @@ class BDDVImageAgent(
                 # Hardcode for non-temporal case for now
                 filter_ = (mask[0] == i)
                 if not np.all(filter_ == False):
-                    output[filter_] = branches[i](inter_output[filter_])
+                    output[filter_] = branches[i + 1](inter_output[filter_])
 
             loss = criterion(output, speed_output, speed_target, steer_distr)
+
+            # Check if loss is nan
+            if math.isnan(loss):
+                print("Loss became NaN")
+                sys.exit(1)
 
             loss.backward()
             train_loss += loss.item()
@@ -155,6 +161,7 @@ class BDDVImageAgent(
                 scheduler.step(loss)
             else:
                 scheduler.step()
+
             if self.cfg.use_progress_bar:
                 progress_bar.update(
                     batch_idx, dict(loss=(train_loss / (batch_idx + 1))))
@@ -168,15 +175,12 @@ class BDDVImageAgent(
 
     def _get_criterion(self, branch_outputs, speed_outputs,
                        speed_target, steer_distr):
-        loss1_steer = torch.nn.functional.mse_loss(
-            branch_outputs, steer_distr, size_average=False)
+        loss_steer = torch.nn.functional.mse_loss(
+            branch_outputs, steer_distr, reduction='sum') / branch_outputs.shape[0]
+        loss_speed = torch.nn.functional.mse_loss(
+            speed_outputs, speed_target, reduction='elementwise_mean')
 
-        loss1 = loss1_steer
-
-        loss2 = (speed_outputs - speed_target) * (speed_outputs - speed_target)
-        loss2 = loss2.sum()
-
-        loss = (0.95 * loss1 + 0.05 * loss2) / branch_outputs.shape[0]
+        loss = 0.95 * loss_steer + 0.05 * loss_speed
         return loss
 
     def _test(self, data_loader):
@@ -187,12 +191,13 @@ class BDDVImageAgent(
         use_cuda = self._use_cuda
         model = self.model
         criterion = self._get_criterion
+        # Remember that the first branch is the speed branch
         branches = self.model.get_branches(use_cuda)
         test_loss = 0
 
         if self.cfg.use_progress_bar:
             progress_bar = ProgressBar(
-                'Loss: %(loss).3f', dict(loss=0), len(data_loader))
+                'Loss: %(loss).5f', dict(loss=0), len(data_loader))
 
         for batch_idx, (images, speed, steer_distr, mask) in enumerate(data_loader):
             images = to_cuda(images, use_cuda)
@@ -210,7 +215,7 @@ class BDDVImageAgent(
                 # Hardcode for non-temporal case for now
                 filter_ = (mask[0] == i)
                 if not np.all(filter_ == False):
-                    output[filter_] = branches[i](inter_output[filter_])
+                    output[filter_] = branches[i + 1](inter_output[filter_])
 
             loss = criterion(output, speed_output, speed_target, steer_distr)
 
@@ -230,16 +235,15 @@ class BDDVImageAgent(
     def _get_steer_from_bins(self, steer_vector):
         # Pass the steer values through softmax_layer and get the bin index
         bin_index = torch.nn.functional.softmax(steer_vector).argmax()
-        #bin_index = steer_vector.argmax()
-        plt.plot(self._bins + 1.0 / len(self._bins),
-                 torch.nn.functional.softmax(steer_vector).data[0].numpy())
-        plt.show(block=False)
+        # plt.plot(self._bins + 1.0 / len(self._bins),
+        #          torch.nn.functional.softmax(steer_vector).data.cpu()[0].numpy())
+        # plt.show(block=False)
 
-        plt.draw()
-        plt.pause(0.0001)
-        #plt.savefig(self.steer_dir + "/distr_" + str(self.nr_img) + ".png")
-        plt.gcf().clear()
-        #get steer_value from bin
+        # plt.draw()
+        # plt.pause(0.0001)
+        # plt.gcf().clear()
+
+        # Get steer_value from bin
         return self._bins[bin_index] + 1.0 / len(self._bins)
 
     def _show_activation_image(self, raw_activation, image_activation):
@@ -277,27 +281,28 @@ class BDDVImageAgent(
         image = np.multiply(image, 1.0 / 127.5) - 1
         image = to_cuda(torch.from_numpy(image), self._use_cuda)
         image = image.unsqueeze(0)
-        speed = to_cuda(torch.Tensor([speed / 90.0]), self._use_cuda)
+        speed = to_cuda(torch.Tensor([speed / 80.0]), self._use_cuda)
         speed = speed.unsqueeze(0)
-
+        # Remember that the first branch is the speed branch
         branches = self.model.get_branches(self._use_cuda)
 
         inter_output, speed_output, activation_map = self.model(image, speed)
 
-        output = branches[cmd](inter_output)
+        output = branches[cmd + 1](inter_output)
 
         steer_angle = self._get_steer_from_bins(output)
         speed_output = speed_output.data.cpu()[0].numpy()
-        return steer_angle, speed_output[0] * 90, activation_map
+        return steer_angle, speed_output[0], activation_map
 
     def run_1step(self, image_raw, speed, cmd):
         image = np.transpose(image_raw, (2, 0, 1)).astype(np.float32)
         image = np.multiply(image, 1.0 / 127.5) - 1
         image = to_cuda(torch.from_numpy(image), self._use_cuda)
         image = image.unsqueeze(0)
-        speed = to_cuda(torch.Tensor([speed / 90.0]), self._use_cuda)
+        speed = to_cuda(torch.Tensor([speed / 80.0]), self._use_cuda)
         speed = speed.unsqueeze(0)
 
+        # Remember that the first branch is the speed branch
         branches = self.model.get_branches(self._use_cuda)
 
         inter_output, speed_output, activation_map = self.model(image, speed)
@@ -305,11 +310,10 @@ class BDDVImageAgent(
         if self.cfg.activations:
             self._show_activation_image(activation_map, np.copy(image_raw))
 
-        output = braches[cmd](inter_output)
-
+        output = branches[cmd + 1](inter_output)
         steer_angle = self._get_steer_from_bins(output)
         speed_output = speed_output.data.cpu()[0].numpy()
-        return steer_angle, speed_output[0] * 90
+        return steer_angle, speed_output[0]
 
     def _eval_episode(self, file_name):
         video_file = file_name[0]
@@ -317,39 +321,41 @@ class BDDVImageAgent(
         info = pd.read_csv(info_file)
 
         nr_images = len(info)
-        previous_speed = info['speed'][0]
+        previous_speed = info['linear_speed'][0] / 80
 
         general_mse = steer_mse = 0
 
         # Get steering angles and commands
+        linear_speed = info['linear_speed']
         angles = info['steer_angle']
-        cmds = info['steer']
+        cmds = np.array(info['steer'], dtype=np.int)
 
         # Iterate throgh all video frames
-        frames = os.listdir(file_name)
-
-        for frame in frames:
-            file = os.path.join(file_name, frame)
+        for index in range(nr_images):
+            frame_name = '{}.jpg'.format(index)
+            file = os.path.join(video_file, frame_name)
             frame = cv2.imread(file)
 
-            gt_speed = info['speed'][index]
-            gt_steer = angles[index]
+            # Normalize speed and steer ground truths
+            gt_speed = linear_speed[index] / 80
+            gt_steer = angles[index] * 2 / math.pi
+            gt_steer = min(1, max(-1, gt_steer))
 
             predicted_steer, predicted_speed = self.run_1step(
                 frame, previous_speed, cmds[index])
 
-            steer = (predicted_steer - gt_steer) * (predicted_steer - gt_steer)
-            speed = (predicted_speed - gt_speed) * (predicted_speed - gt_speed)
+            steer = (predicted_steer - gt_steer) ** 2
+            speed = (predicted_speed - gt_speed) ** 2
             steer_mse += steer
 
             general_mse += 0.05 * speed + 0.95 * steer
 
-            log.info("Frame number {}".format(index))
-            log.info("Steer: predicted {}, ground_truth {}".format(
-                predicted_steer, gt_steer))
+            #log.info("Frame number {}".format(index))
+            #log.info("Steer: predicted {}, ground_truth {}".format(
+            #    predicted_steer, gt_steer))
 
-            log.info("Speed: predicted {}, ground_truth {}".format(
-                predicted_speed, gt_speed))
+            #log.info("Speed: predicted {}, ground_truth {}".format(
+            #    predicted_speed * 80, gt_speed * 80))
 
             previous_speed = gt_speed
 
@@ -393,8 +399,8 @@ class BDDVImageAgent(
         for i in range(len(video_files)):
             std_mse += (eval_results[i][0] - mean_mse) * (
                 eval_results[i][0] - mean_mse)
-            std_steer += (eval_results[i][2] - mean_steer) * (
-                eval_results[i][2] - mean_steer)
+            std_steer += (eval_results[i][1] - mean_steer) * (
+                eval_results[i][1] - mean_steer)
 
         std_mse /= float(len(video_files))
         std_steer /= float(len(video_files))
@@ -430,6 +436,7 @@ class BDDVImageAgent(
         speed = torch.Tensor([real_speed / 25.0])
         speed = speed.unsqueeze(0)
 
+        # Remember that the first branch is the speed branch
         branches = self.model.get_branches(self._use_cuda)
 
         inter_output, predicted_speed, activation_map = self.model(
@@ -439,14 +446,7 @@ class BDDVImageAgent(
             self._show_activation_image(activation_map,
                                         np.copy(image_input_raw))
 
-        if control_input == 2 or control_input == 0:
-            output = branches[1](inter_output)
-        elif control_input == 3:
-            output = branches[2](inter_output)
-        elif control_input == 4:
-            output = branches[3](inter_output)
-        else:
-            output = branches[4](inter_output)
+        output = branches[control_input + 1](inter_output)
 
         steer = self._get_steer_from_bins(output[:, :-2])
         output = output.data.cpu()[0].numpy()

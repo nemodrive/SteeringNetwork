@@ -86,9 +86,9 @@ class BDDVImageLoader(DataLoaderBase):
             info = os.path.join(self._info_path_test, vidname + '.csv')
             data_eval[vidname] = (vid, info)
         tag_names = [
-            'Acceleration x', 'Acceleration y', 'Acceleration z', 'Gps Lat',
-            'Gps Long', 'Gyro x', 'Gyro y', 'Gyro z', 'Speed x', 'Speed y',
-            'Timestamp', 'Linear Speed', 'Steer', 'Course', 'Steer Angle'
+            'Acceleration x', 'Acceleration y', 'Acceleration z', 'Course', 'Gps Lat',
+            'Gps Long', 'Gyro x', 'Gyro y', 'Gyro z', 'Linear Speed', 'Speed x',
+            'Speed y', 'Timestamp', 'Steer', 'Steer Angle'
         ]
 
         self.data = {

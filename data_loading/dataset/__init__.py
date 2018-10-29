@@ -2,7 +2,7 @@ from .udacity_image_dataset import UdacityImageSteerDataset
 from .conditional_imitation_dataset import ConditionalImitationLearningDataset
 from .conditional_imitation_dataset import ConditionalImitationLearningSampler
 from .bddv_dataset import BDDVDataset, BDDVSampler
-from .bddv_img_dataset import BDDVImageDataset, BDDVImageSample
+from .bddv_img_dataset import BDDVImageDataset, BDDVImageSampler
 
 DATA_SET = {
     "UdacityImageSteerDataset": UdacityImageSteerDataset,

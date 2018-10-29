@@ -57,17 +57,18 @@ def add_steering(file, tts, deceleration_thresh):
         return
 
     # Compute course
-    course = np.zeros(len(s))
-    for i in range(len(s)):
-        course[i] = get_angle(sx[i], sy[i])
+    # course = np.zeros(len(s))
+    # for i in range(len(s)):
+    #     course[i] = get_angle(sx[i], sy[i])
+    course = df['course'] * math.pi / 180
 
     # Store steering angles
     steer_angle = np.zeros(len(s))
 
     # Angle thresholds
-    thresh_low = (2 * math.pi / 360) * 2
-    thresh_high = (2 * math.pi / 360) * 180
-    thresh_slight_low = (2 * math.pi / 360) * 5
+    thresh_low = (math.pi / 180) * 2
+    thresh_high = (math.pi / 180) * 180
+    thresh_slight_low = (math.pi / 180) * 5
 
     next_ind = 0
     steer = np.zeros(len(s))
@@ -76,8 +77,8 @@ def add_steering(file, tts, deceleration_thresh):
             next_ind += 1
         if next_ind >= len(s):
             break
-        curr_angle = get_angle(sx[i], sy[i])
-        next_angle = get_angle(sx[next_ind], sy[next_ind])
+        curr_angle = course[i]
+        next_angle = course[next_ind]
 
         # The car is not moving or will not be moving
         if curr_angle is None or next_angle is None:
@@ -85,6 +86,12 @@ def add_steering(file, tts, deceleration_thresh):
             continue
 
         course_diff = next_angle - curr_angle
+        # Fix angle in case of steering angles around 360 degrees
+        if course_diff < -math.pi:
+            course_diff += 2 * math.pi
+        elif math.pi < course_diff:
+            course_diff -= 2 * math.pi
+
         steer_angle[i] = course_diff
         if s[next_ind] - s[i] < deceleration_thresh:
             steer[i] = enum['slow_or_stop']
@@ -99,7 +106,7 @@ def add_steering(file, tts, deceleration_thresh):
             else:
                 steer[i] = enum['turn_left_slight']
         elif course_diff < -thresh_high or thresh_high < course_diff:
-            print("WTF", (next_angle, sx[next_ind], sy[next_ind]), (curr_angle, sx[i], sy[i]))
+            print("WTF", file, next_angle * 180 / math.pi, curr_angle * 180 / math.pi, course_diff * 180 / math.pi, "{} / {}".format(i, len(s)))
             steer[i] = enum['slow_or_stop']
         else:
             steer[i] = enum['straight']
@@ -116,9 +123,9 @@ def add_steering(file, tts, deceleration_thresh):
         df_steer = pd.DataFrame({'steer': steer})
         df = pd.concat([df, df_steer], axis=1)
 
-    if 'course' not in df:
-        df_course = pd.DataFrame({'course': course})
-        df = pd.concat([df, df_course], axis=1)
+    # if 'course' not in df:
+    #     df_course = pd.DataFrame({'course': course})
+    #     df = pd.concat([df, df_course], axis=1)
 
     if 'steer_angle' not in df:
         df_steer_angle = pd.DataFrame({'steer_angle': steer_angle})

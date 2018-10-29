@@ -1,7 +1,7 @@
 from .udacity_cloning_loader import UdacityCloningDataLoader
 from .conditional_imitation_loader import ConditionalImitationLoader
 from .bddv_loader import BDDVLoader
-from .bddv_image_loader import BDDVImageLoader
+from .bddv_img_loader import BDDVImageLoader
 
 DATA_LOADERS = {
     "UdacityCloningDataLoader": UdacityCloningDataLoader,

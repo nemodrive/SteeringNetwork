@@ -52,7 +52,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('--video_dir',
         type=str,
         default='/home/alexm/Desktop/hal_data/samples-1k/good_videos',
-        help='path to the directory containing info about the videos')
+        help='path to the directory containing the videos')
 
     args = arg_parser.parse_args()
     split_data(args)

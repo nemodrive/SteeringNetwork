@@ -186,6 +186,7 @@ def process_video_info(video_path, args):
             'gyro_x': curr_data['gyroscope'][:, 0],
             'gyro_y': curr_data['gyroscope'][:, 1],
             'gyro_z': curr_data['gyroscope'][:, 2],
+            'course': curr_data['course']
             # 'turn': curr_data['turn'],
             # 'steer': curr_data['steer']
         }
@@ -210,7 +211,7 @@ def parse_path(video_path, args):
     '''
     fd, fname = os.path.split(video_path)
     fprefix = fname.split(".")[0]
-    original_out_name = os.path.join(args.output_directory, 'original', fprefix + ".csv")
+    original_out_name = os.path.join(args.output_directory, fprefix + ".csv")
     fixed_out_name = os.path.join(args.output_directory, 'fixed', fprefix + "_fixed.csv")
     sampled_out_name = os.path.join(args.output_directory, 'sampled', fprefix + "_sampled.csv")
 
@@ -239,13 +240,13 @@ if __name__ == '__main__':
     arg_parser.add_argument(
         '--video_index',
         type=str,
-        default='/home/alexm/Desktop/hal_data/samples-1k/filtered',
+        default='/home/tempuser/workspace/alexm/samples-1k/filtered',
         help='filtered video indexing')
 
     arg_parser.add_argument(
         '--output_directory',
         type=str,
-        default='/home/alexm/Desktop/SteeringNetwork/data_loading/bdd_dataset_helper/video_data',
+        default='/home/tempuser/workspace/alexm/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/all_info',
         help='Training data directory')
     arg_parser.add_argument(
         '--debug',

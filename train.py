@@ -36,7 +36,6 @@ def run_once(args):
     # -- Get agent
     agent = get_agent(cfg.agent)
 
-
     # -- Should have some kind of reporting agent
     # TODO Implement reporting agent
 
@@ -44,7 +43,7 @@ def run_once(args):
     save_config(os.path.join(cfg.general.common.save_path, "ran_cfg"), cfg)
 
     eval_freq = cfg.train.eval_freq
-    no_epochs = cfg.train.no_epochs
+    no_epochs = cfg.train.no_epochs - agent.get_train_epoch()
 
     for epoch in range(no_epochs):
         log.info("Train epoch: {}".format(epoch))
@@ -58,6 +57,7 @@ def run_once(args):
 
     with open(path + "/loss_values_test", "wb") as f:
         pickle.dump(agent.loss_values_test, f)
+
     agent.eval_agent()
 
 
