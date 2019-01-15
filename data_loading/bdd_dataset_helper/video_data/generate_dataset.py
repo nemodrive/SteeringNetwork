@@ -4,7 +4,7 @@ from shutil import copy
 from argparse import ArgumentParser
 
 TRAIN = 0.7
-VALID = 0.1
+VALID = 0.3
 
 
 def split_data(args):
@@ -14,33 +14,33 @@ def split_data(args):
 
     train_inds = sorted(random.sample(range(len(info_files)), train_len))
     for ind in reversed(train_inds):
-        vid_name = info_files[ind].split('_')[0] + '.mov'
+        vid_name = info_files[ind].split('.')[0] + ".mov"
         info_file = os.path.join(args.info_dir, info_files[ind])
         vid_file = os.path.join(args.video_dir, vid_name)
 
-        copy(info_file, 'train/info')
-        copy(vid_file, 'train/data')
+        copy(info_file, 'train/info.csv')
+        copy(vid_file, 'train/data.mov')
 
         del info_files[ind]
 
     valid_inds = sorted(random.sample(range(len(info_files)), valid_len))
     for ind in reversed(valid_inds):
-        vid_name = info_files[ind].split('_')[0] + '.mov'
+        vid_name = info_files[ind].split('.')[0] + ".mov"
         info_file = os.path.join(args.info_dir, info_files[ind])
         vid_file = os.path.join(args.video_dir, vid_name)
 
-        copy(info_file, 'validation/info')
-        copy(vid_file, 'validation/data')
+        copy(info_file, 'validation/info.csv')
+        copy(vid_file, 'validation/data.mov')
 
         del info_files[ind]
 
     for file in info_files:
-        vid_name = file.split('_')[0] + '.mov'
+        vid_name = file.split('.')[0] + ".mov"
         info_file = os.path.join(args.info_dir, file)
         vid_file = os.path.join(args.video_dir, vid_name)
 
-        copy(info_file, 'test/info')
-        copy(vid_file, 'test/data')
+        copy(info_file, 'test/info.csv')
+        copy(vid_file, 'test/data.mov')
 
 
 if __name__ == '__main__':

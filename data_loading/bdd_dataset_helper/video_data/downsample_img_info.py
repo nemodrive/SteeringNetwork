@@ -34,11 +34,11 @@ if __name__ == '__main__':
 
     args = arg_parser.parse_args()
 
-    if not os.path.exists(args.out_dir):
-        os.makedirs(args.out_dir)
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
 
-    for file in os.listdir(args.info_dir):
+    for file in os.listdir(args.data_dir):
         info_name = file
-        file = os.path.join(args.info_dir, file)
+        file = os.path.join(args.data_dir, file)
 
-        downsample(info_name, args.sample_rate, file, args.out_dir)
+        downsample(info_name, args.sample_rate, file, args.output_dir)

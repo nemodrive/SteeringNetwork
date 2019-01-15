@@ -11,29 +11,30 @@ def get_video_metadata(args):
     video_metadata = {}
     # Get the metadata for each video file
     for video in os.listdir(args.video_dir):
-        vidname = os.path.join(args.video_dir, video + '.mov')
+        if '.mov' in video:
+            vidname = os.path.join(args.video_dir, video)
 
-        # Get the number of frames in the video
-        nframes_cmd = ['ffprobe', '-v', 'error', '-count_frames',
-            '-select_streams', 'v:0', '-show_entries', 'stream=nb_frames',
-            '-of', 'default=nokey=1:noprint_wrappers=1', vidname]
-        p = subprocess.Popen(nframes_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = p.communicate()
-        nframes = int(out)
+            # Get the number of frames in the video
+            nframes_cmd = ['ffprobe', '-v', 'error', '-count_frames',
+                '-select_streams', 'v:0', '-show_entries', 'stream=nb_frames',
+                '-of', 'default=nokey=1:noprint_wrappers=1', vidname]
+            p = subprocess.Popen(nframes_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, err = p.communicate()
+            nframes = int(out)
 
-        # Get the duration of each video
-        duration_cmd = ['ffprobe', '-v', 'error', '-select_streams', 'v:0',
-            '-show_entries', 'stream=duration', '-of',
-            'default=noprint_wrappers=1:nokey=1', vidname]
-        p = subprocess.Popen(duration_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = p.communicate()
-        duration = float(out)
+            # Get the duration of each video
+            duration_cmd = ['ffprobe', '-v', 'error', '-select_streams', 'v:0',
+                '-show_entries', 'stream=duration', '-of',
+                'default=noprint_wrappers=1:nokey=1', vidname]
+            p = subprocess.Popen(duration_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, err = p.communicate()
+            duration = float(out)
 
-        # Save the metadata for the current video
-        video_metadata[video] = {
-            'nframes': nframes,
-            'duration': duration
-        }
+            # Save the metadata for the current video
+            video_metadata[video] = {
+                'nframes': nframes,
+                'duration': duration
+            }
 
     # Store the metadata for all videos in a pickle file
     pkl.dump(video_metadata, open(args.data_filename, 'wb'))

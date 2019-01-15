@@ -10,6 +10,7 @@ def generate_frames(file, output_dir, sample_rate):
     cmd = ['ffmpeg', '-i', file]
     ffmpeg = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     _, err = ffmpeg.communicate()
+    print(err)
     fps = round(float(str(err).split('fps')[0].split()[-1]))
 
     if fps == 60:
