@@ -74,20 +74,19 @@ class BDDVImageLoader(DataLoaderBase):
         data_train = OrderedDict()
         video_train = os.listdir(self._dataset_path)
         for vid in video_train:
-            vidname = vid
-            vid = os.path.join(self._dataset_path, vid)
+            vidname = vid.split('.')[0]
+            vid = os.path.join(self._dataset_path + '_frames', 'data')
             info = os.path.join(self._info_path, vidname + '.csv')
             data_train[vidname] = (vid, info)
         data_eval = OrderedDict()
         video_eval = os.listdir(self._dataset_path_test)
         for vid in video_eval:
-            vidname = vid
-            vid = os.path.join(self._dataset_path_test, vid)
+            vidname = vid.split('.')[0]
+            vid = os.path.join(self._dataset_path_test + '_frames', 'data')
             info = os.path.join(self._info_path_test, vidname + '.csv')
             data_eval[vidname] = (vid, info)
         tag_names = [
-            'Acceleration x', 'Acceleration y', 'Acceleration z', 'Course', 'Gps Lat',
-            'Gps Long', 'Gyro x', 'Gyro y', 'Gyro z', 'Linear Speed', 'Speed x',
+            'Course', 'Linear Speed', 'Speed x',
             'Speed y', 'Timestamp', 'Steer', 'Steer Angle'
         ]
 

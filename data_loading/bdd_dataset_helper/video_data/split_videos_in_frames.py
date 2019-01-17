@@ -6,39 +6,40 @@ from argparse import ArgumentParser
 
 
 def generate_frames(file, output_dir, sample_rate):
-    # Get video frame rate
-    cmd = ['ffmpeg', '-i', file]
-    ffmpeg = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-    _, err = ffmpeg.communicate()
-    print(err)
-    fps = round(float(str(err).split('fps')[0].split()[-1]))
+    if '.mov' in file:
+        # Get video frame rate
+        cmd = ['ffmpeg', '-i', file]
+        ffmpeg = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        _, err = ffmpeg.communicate()
+        print(err)
+        fps = round(float(str(err).split('fps')[0].split()[-1]))
 
-    if fps == 60:
-        sample_rate *= 2
+        if fps == 60:
+            sample_rate *= 2
 
-    vid = cv2.VideoCapture(file)
-    ret, img = vid.read()
+        vid = cv2.VideoCapture(file)
+        ret, img = vid.read()
 
-    # Get frames
-    frames = []
-    cnt = 0
-    while ret:
-        if cnt % sample_rate == 0:
-            frames.append(img)
-        ret, img =  vid.read()
-        cnt += 1
+        # Get frames
+        frames = []
+        cnt = 0
+        while ret:
+            if cnt % sample_rate == 0:
+                frames.append(img)
+            ret, img =  vid.read()
+            cnt += 1
 
-    filename = file.split('/')[-1].split('.')[0]
-    out_dir = os.path.join(output_dir, filename)
+        filename = file.split('/')[-1].split('.')[0]
+        out_dir = os.path.join(output_dir, filename)
 
-    # Create output directory directory
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
+        # Create output directory directory
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
 
-    # Store the frames
-    for i in range(len(frames)):
-        frame_file = os.path.join(out_dir, 'frame{}.jpg'.format(i))
-        cv2.imwrite(frame_file, frames[i])
+        # Store the frames
+        for i in range(len(frames)):
+            frame_file = os.path.join(out_dir, 'frame{}.jpg'.format(i))
+            cv2.imwrite(frame_file, frames[i])
 
 
 if __name__ == '__main__':

@@ -4,7 +4,7 @@ import pickle as pkl
 from torch.utils.data import Dataset
 from torch.utils.data.sampler import Sampler
 
-from dataset_helper import DatasetHelper
+from .dataset_helper import DatasetHelper
 import random
 
 

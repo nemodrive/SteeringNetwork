@@ -3,8 +3,8 @@ import random
 from shutil import copy
 from argparse import ArgumentParser
 
-TRAIN = 0.7
-VALID = 0.3
+TRAIN = 1
+VALID = 1 - TRAIN
 
 
 def split_data(args):
@@ -18,7 +18,7 @@ def split_data(args):
         info_file = os.path.join(args.info_dir, info_files[ind])
         vid_file = os.path.join(args.video_dir, vid_name)
 
-        copy(info_file, 'train/info.csv')
+        copy(info_file, 'train/data.csv')
         copy(vid_file, 'train/data.mov')
 
         del info_files[ind]
@@ -29,7 +29,7 @@ def split_data(args):
         info_file = os.path.join(args.info_dir, info_files[ind])
         vid_file = os.path.join(args.video_dir, vid_name)
 
-        copy(info_file, 'validation/info.csv')
+        copy(info_file, 'validation/data.csv')
         copy(vid_file, 'validation/data.mov')
 
         del info_files[ind]
@@ -39,7 +39,7 @@ def split_data(args):
         info_file = os.path.join(args.info_dir, file)
         vid_file = os.path.join(args.video_dir, vid_name)
 
-        copy(info_file, 'test/info.csv')
+        copy(info_file, 'test/data.csv')
         copy(vid_file, 'test/data.mov')
 
 

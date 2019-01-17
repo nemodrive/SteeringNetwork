@@ -81,7 +81,7 @@ class BDDVImageDataset(Dataset):
         images = []
         target_vectors = []
         for i in range(0, self.cfg.data_info.frame_seq_len):
-            frame = cv2.imread(os.path.join(video_dir, str(frame_index + i) + '.jpg'))
+            frame = cv2.imread(os.path.join(video_dir, 'frame' + str(frame_index + i) + '.jpg'))
             info = list(pd.read_csv(viditems[1][1]).iloc[frame_index,1:])
             images.append(frame)
             target_vectors.append(info)
@@ -98,7 +98,6 @@ class BDDVImageDataset(Dataset):
         # Concatenate channels from several images
         images = images.reshape(self.image_height, self.image_width,
                 3 * self.cfg.data_info.frame_seq_len)
-
         cmd_signals = [t[self.tag_names.index('Steer')] for t in target_vectors]
         cmd_signals = np.array(cmd_signals, dtype=np.int)
 
@@ -136,7 +135,6 @@ class BDDVImageDataset(Dataset):
         steer = np.array([normalize_angle(t[self.tag_names.index('Steer Angle')]) for t in target_vectors])
         steer_bin_no = np.digitize(steer, self._bins)
         steer_mean_bin = self._bins[steer_bin_no - 1] + 1.0 / len(self._bins)
-
         steer_distribution = gaussian_distribution(
             np.copy(self._bins) + 1.0 / len(self._bins), steer_mean_bin,
             self.cfg.dispersion)
@@ -198,7 +196,11 @@ class BDDVImageSampler(Sampler):
         return self.__next__()
 
     def __next__(self):
-        sample_type = random.choices(self._population, self._weights)[0]
+        # added this while because samples_cmd[sample_type] could be empty
+        while True:
+            sample_type = random.choices(self._population, self._weights)[0]
+            if self.samples_cmd[sample_type]:
+                break
         idx = self.samples_cmd[sample_type][self.samples_idx[sample_type]]
 
         self.samples_idx[sample_type] += 1

@@ -6,17 +6,17 @@ from .dataset import get_dataset
 
 class DataLoaderBase(object):
     def __init__(self, cfg):
-        seed = cfg.data_seed
+        seed = cfg.data_loader.data_seed
         self._seed = seed if seed != -1 else random.randint(1, 9999999)
-        cfg.data_seed = self._seed
+        cfg.data_loader.data_seed = self._seed
         self._dataset_cfg = cfg.dataset
         self._dataset = get_dataset(cfg.dataset)
         self._dataset_path = cfg.dataset.dataset_path
         self._dataset_path_test = cfg.dataset.dataset_eval_path
-        self._test_size = cfg.test_size
-        self._shuffle = cfg.shuffle
-        self._no_workers = cfg.no_workers
-        self._batch_size = cfg.batch_size
+        self._test_size = cfg.data_loader.test_size
+        self._shuffle = cfg.data_loader.shuffle
+        self._no_workers = cfg.data_loader.no_workers
+        self._batch_size = cfg.data_loader.batch_size
 
         self.data = None
 

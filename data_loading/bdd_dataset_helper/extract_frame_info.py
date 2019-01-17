@@ -73,7 +73,6 @@ def full_im(pixel, all_num):
 
 
 def get_nr_frames(video_path):
-
     cmd = [
         'ffprobe', '-v', 'error', '-count_frames', '-select_streams', 'v:0',
         '-show_entries', 'stream=nb_frames', '-of',
@@ -178,15 +177,15 @@ def process_video_info(video_path, args):
             'speed_y': curr_data['speed'][:, 1],
             'linear_speed': curr_data['linear_speed'],
             'course': curr_data['course'],
-            'gps_lat': curr_data['gps'][:, 0],
-            'gps_long': curr_data['gps'][:, 1],
-            'acceleration_x': curr_data['accelerometer'][:, 0],
-            'acceleration_y': curr_data['accelerometer'][:, 1],
-            'acceleration_z': curr_data['accelerometer'][:, 2],
-            'gyro_x': curr_data['gyroscope'][:, 0],
-            'gyro_y': curr_data['gyroscope'][:, 1],
-            'gyro_z': curr_data['gyroscope'][:, 2],
-            'course': curr_data['course']
+            # 'gps_lat': curr_data['gps'][:, 0],
+            # 'gps_long': curr_data['gps'][:, 1],
+            # 'acceleration_x': curr_data['accelerometer'][:, 0],
+            # 'acceleration_y': curr_data['accelerometer'][:, 1],
+            # 'acceleration_z': curr_data['accelerometer'][:, 2],
+            # 'gyro_x': curr_data['gyroscope'][:, 0],
+            # 'gyro_y': curr_data['gyroscope'][:, 1],
+            # 'gyro_z': curr_data['gyroscope'][:, 2],
+            # 'course': curr_data['course']
             # 'turn': curr_data['turn'],
             # 'steer': curr_data['steer']
         }

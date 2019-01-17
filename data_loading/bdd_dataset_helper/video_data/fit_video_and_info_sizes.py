@@ -9,18 +9,20 @@ def adjust_sizes(args):
     of entries
     """
     for file in os.listdir(args.video_dir):
-        info_file = os.path.join(args.info_dir, file + '.csv')
-        file = os.path.join(args.video_dir, file)
-        info = pd.read_csv(info_file).iloc[:, 1:]
-        nframes = len(os.listdir(file))
+        if '.csv' in file:
+            name = file.split('.')[0]
+            info_file = os.path.join(args.info_dir, name + '.csv')
+            file = os.path.join(args.video_dir, name)
+            info = pd.read_csv(info_file).iloc[:, 1:]
+            nframes = len(os.listdir(args.frame_dir))
 
-        if nframes < len(info):
-            info = info.iloc[:nframes]
-            info.to_csv(info_file)
-        elif len(info) < nframes:
-            for i in range(len(info), nframes):
-                frame = os.path.join(file, '{}.jpg'.format(i))
-                os.remove(frame)
+            if nframes < len(info):
+                info = info.iloc[:nframes]
+                info.to_csv(info_file)
+            elif len(info) < nframes:
+                for i in range(len(info), nframes):
+                    frame = os.path.join(file, '{}.jpg'.format(i))
+                    os.remove(frame)
 
 
 if __name__ == '__main__':

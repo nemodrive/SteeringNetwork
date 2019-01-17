@@ -113,7 +113,7 @@ def read_loc_json(json_file, video_filename):
             if bad_video_c >= 3:
                 break
         if ifile != 0:
-            if int(f['timestamp']) - prev_t > 1100:
+            if int(f['timestamp']) - prev_t > 1500:
                 bad_video_t = 1
                 break
             if abs(int(f['timestamp']) - int(prev_t)) < 1:
@@ -412,19 +412,19 @@ def get_interpolated_sensors(json_path, video_filename, nr_frames):
         original_data[key] = original_loc[key]
 
     # Get accelerometer valus for each frame
-    res = read_acc_json(seg, video_filename)
-    if res is None:
-        return None, None, -1
-    fixed_acc, original_acc = get_interpolated_acc(res, nr_frames)
-    # fixed_data['accelerometer'] = fixed_acc
-    original_data['accelerometer'] = original_acc
+    # res = read_acc_json(seg, video_filename)
+    # if res is None:
+    #     return None, None, -1
+    # fixed_acc, original_acc = get_interpolated_acc(res, nr_frames)
+    # # fixed_data['accelerometer'] = fixed_acc
+    # original_data['accelerometer'] = original_acc
 
     # Get gyroscope values for each frame
-    res = read_gyro_json(seg, video_filename)
-    if res is None:
-        return None, None, -1
-    fixed_gyro, original_gyro = get_interpolated_gyro(res, nr_frames)
-    # fixed_data['gyroscope'] = fixed_gyro
-    original_data['gyroscope'] = original_gyro
+    # res = read_gyro_json(seg, video_filename)
+    # if res is None:
+    #     return None, None, -1
+    # fixed_gyro, original_gyro = get_interpolated_gyro(res, nr_frames)
+    # # fixed_data['gyroscope'] = fixed_gyro
+    # original_data['gyroscope'] = original_gyro
 
     return fixed_data, original_data, 0
