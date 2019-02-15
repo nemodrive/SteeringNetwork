@@ -116,7 +116,8 @@ def read_loc_json(json_file, video_filename):
             if int(f['timestamp']) - prev_t > 1500:
                 bad_video_t = 1
                 break
-            if abs(int(f['timestamp']) - int(prev_t)) < 1:
+            # modified to < 0 because the timestamps were floats not ints
+            if abs(int(f['timestamp']) - int(prev_t)) < 0:
                 bad_video_same = 1
                 break
         prev_t = f['timestamp']

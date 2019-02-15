@@ -75,14 +75,14 @@ class BDDVImageLoader(DataLoaderBase):
         video_train = os.listdir(self._dataset_path)
         for vid in video_train:
             vidname = vid.split('.')[0]
-            vid = os.path.join(self._dataset_path + '_frames', 'data')
+            vid = os.path.join(self._dataset_path, vid)
             info = os.path.join(self._info_path, vidname + '.csv')
             data_train[vidname] = (vid, info)
         data_eval = OrderedDict()
         video_eval = os.listdir(self._dataset_path_test)
         for vid in video_eval:
             vidname = vid.split('.')[0]
-            vid = os.path.join(self._dataset_path_test + '_frames', 'data')
+            vid = os.path.join(self._dataset_path_test, vid)
             info = os.path.join(self._info_path_test, vidname + '.csv')
             data_eval[vidname] = (vid, info)
         tag_names = [

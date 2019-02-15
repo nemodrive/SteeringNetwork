@@ -150,8 +150,11 @@ def process_video_info(video_path, args):
 
     nr_frames = get_nr_frames(video_path)
     duration, _ = probe_file(video_path)
+    # if there are three cameras the videos will finish in -0.mov -1.mov, -2.mov
+    # but there is only one .json for each (delete the index termination)
+    fprefix = fprefix.split('-')[0]
     # save the speed field
-    json_path = os.path.join(os.path.dirname(fd), "info", fprefix + ".json")
+    json_path = os.path.join(os.path.dirname(fd), 'good', fprefix + ".json")
     fix_data, orig_data, err = get_interpolated_sensors(
         json_path, fprefix + ".mov", nr_frames)
     if err:

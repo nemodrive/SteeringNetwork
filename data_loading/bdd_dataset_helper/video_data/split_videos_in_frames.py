@@ -54,7 +54,7 @@ if __name__ == '__main__':
         help='path to directory where to store the frames')
     arg_parser.add_argument('--sample_rate',
         type=int,
-        default=3,
+        default=1,
         help='select one in sample_rate frames')
 
     args = arg_parser.parse_args()

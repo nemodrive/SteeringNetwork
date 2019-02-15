@@ -68,7 +68,7 @@ class BDDVImageDataset(Dataset):
         # Determine which video to extract the sequence of frames from
         video_file_index = self._get_video_index(index)
         frame_index = index - self.start_frames[video_file_index]
-
+        #print(video_file_index)
         # Fix frame number to prevent overflow
         if index + self.cfg.data_info.frame_seq_len > self.start_frames[video_file_index + 1]:
             frame_index -= index + self.cfg.data_info.frame_seq_len - self.start_frames[video_file_index + 1]
