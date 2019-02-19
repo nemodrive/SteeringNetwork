@@ -206,8 +206,8 @@ class Xception(nn.Module):
         return x
 
 
-def xception(out_size=1000, pretrained='imagenet'):
-    model = Xception(out_size=out_size)
+def xception(cfg, in_size, out_size=1000, pretrained='imagenet'):
+    model = Xception(cfg, in_size, out_size=out_size)
     if pretrained:
         settings = pretrained_settings['xception'][pretrained]
         assert out_size == settings['out_size'], \

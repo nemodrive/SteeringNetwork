@@ -4,6 +4,9 @@ import yaml
 import cv2
 import time
 import matplotlib.pyplot as plt
+import torch.nn as nn
+import torch.optim as optim
+from models import xception_backbone
 
 f = open("/home/nemodrive3/workspace/andreim/SteeringNetwork/configs/bddv_img.yaml", 'r')
 di = yaml.load(f)
@@ -18,6 +21,13 @@ stop = False
 def close_event():
     plt.close()
 
+net = xception_backbone.xception(None, None, 180)
+
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(net.paramseters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
+
+"""
+# data load test
 for i, data in enumerate(train_loader):
     for it, image in enumerate(data[0]):
         image = image[0:1]
@@ -35,3 +45,8 @@ for i, data in enumerate(train_loader):
         plt.show()
     if stop:
         break
+"""
+
+for epoch in range(1000):
+    for i, data in enumerate(train_loader):
+        print(data.size())

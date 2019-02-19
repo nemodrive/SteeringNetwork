@@ -1,0 +1,59 @@
+verbose: &verbose 1
+runs: 1
+procs_no: 1
+save_folder: "experiments"
+name: "Test_"
+title: "Simple steering network"
+plots: "tensorboard" # can be "matplotlib", "tensorboard" or "both"
+
+general:
+  batch_size: &batch_size 1
+  use_cuda: &use_cuda yes
+  seed: 3
+
+data_info: &data_info
+  image_shape: [3, 75, 320]
+
+# Estimator
+model: &model
+  name: "CloningSimpleModel"
+  type: ""
+  hidden_size: 256
+
+train: &train
+  no_epochs: 100000
+  eval_freq: 1
+  max_grad_norm: 40.
+  criterion: MSELoss
+  algorithm: RMSprop
+  algorithm_args:
+    lr: 0.001
+
+agent: &agent
+  name: "DemoAgent"
+  type: ""
+  resume: ""
+  model: *model
+  train: *train
+  data_info: *data_info
+  verbose: *verbose
+  use_cuda: *use_cuda
+  batch_size: *batch_size
+  data_parallel: [0, -1] # [use/not_use, device_ids: -1 -- all / [list of device ids] ]
+  save_freq: 5
+  save_best: yes
+  save_best_freq_lim: 5
+
+dataset: &dataset
+  name: "UdacityImageSteerDataset"
+  dataset_path: "datasets/udacity_endtoend"
+
+data_loader:
+  name: "UdacityCloningDataLoader"
+  dataset: *dataset
+  data_info: *data_info
+  test_size: .2
+  shuffle: yes
+  no_workers: 4
+  data_seed: 314
+  batch_size: *batch_size
