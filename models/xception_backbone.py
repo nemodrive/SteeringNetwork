@@ -151,6 +151,7 @@ class Xception(nn.Module):
         self.bn4 = nn.BatchNorm2d(2048)
 
         self.fc = nn.Linear(2048, out_size)
+        self.softmax = nn.Softmax(1)
 
         # #------- init weights --------
         # for m in self.modules():
@@ -198,6 +199,7 @@ class Xception(nn.Module):
         x = F.adaptive_avg_pool2d(x, (1, 1))
         x = x.view(x.size(0), -1)
         x = self.last_linear(x)
+        #x = self.softmax(x)
         return x
 
     def forward(self, input):
@@ -213,7 +215,7 @@ def xception(cfg, in_size, out_size=1000, pretrained='imagenet'):
         assert out_size == settings['out_size'], \
             "out_size should be {}, but is {}".format(settings['out_size'], out_size)
 
-        model = Xception(out_size=out_size)
+        model = Xception(cfg, in_size, out_size=out_size)
         model.load_state_dict(model_zoo.load_url(settings['url']))
 
         model.input_space = settings['input_space']

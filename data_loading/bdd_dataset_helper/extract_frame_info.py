@@ -165,6 +165,10 @@ def process_video_info(video_path, args):
     if args.debug:
         import pdb; pdb.set_trace()
 
+    # downsample original data
+    for key in orig_data:
+        orig_data[key] = (orig_data[key])[0::args.temporal_downsample_factor]
+
     # Prepare data to be transformed into csv
     full_data = {
         # 'fixed_data': fix_data,
