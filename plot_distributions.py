@@ -27,11 +27,11 @@ def close_event():
 model = xception_backbone.xception(None, None, 1000)
 model.last_linear = nn.Linear(2048, 180)
 model = model.cuda()
-model.load_state_dict(torch.load('/home/nemodrive3/workspace/andreim/upb_data/logs/eval_checkpoints/best_eval_model_emd_30_1000'))
+model.load_state_dict(torch.load('/home/nemodrive3/workspace/andreim/upb_data/logs/eval_checkpoints/best_eval_model_kl_div_sgd_52_1000'))
 model.eval()
 
 with torch.no_grad():
-    for j, data in enumerate(test_loader):
+    for j, data in enumerate(train_loader):
         eval_inputs, eval_labels = data[0].cuda(), data[2].cuda()
         eval_outputs = model(eval_inputs.float())
 
@@ -47,7 +47,7 @@ with torch.no_grad():
             timer = fig.canvas.new_timer(interval=2000)
             timer.add_callback(close_event)
             plt.plot(data[2][it].numpy())
-            plt.plot(eval_outputs[it].squeeze(-1).cpu().numpy())
+            plt.plot(eval_outputs[it].cpu().numpy())
             plt.show()
         if stop:
             break

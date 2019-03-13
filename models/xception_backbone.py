@@ -151,7 +151,6 @@ class Xception(nn.Module):
         self.bn4 = nn.BatchNorm2d(2048)
 
         self.fc = nn.Linear(2048, out_size)
-        self.softmax = nn.Softmax(1)
 
         # #------- init weights --------
         # for m in self.modules():
@@ -199,7 +198,6 @@ class Xception(nn.Module):
         x = F.adaptive_avg_pool2d(x, (1, 1))
         x = x.view(x.size(0), -1)
         x = self.last_linear(x)
-        #x = self.softmax(x)
         return x
 
     def forward(self, input):

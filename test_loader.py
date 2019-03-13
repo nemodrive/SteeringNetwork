@@ -49,10 +49,11 @@ M = (x[:,np.newaxis] - x[np.newaxis,:]) ** 2
 M /= M.max()
 #criterion = WassersteinLossStab(torch.from_numpy(M), lam=0.1)
 #criterion = nn.modules.loss.BCELoss().cuda()
-criterion = nn.modules.loss.BCEWithLogitsLoss().cuda()
+#criterion = nn.modules.loss.BCEWithLogitsLoss().cuda()
 #criterion = EMDModule().cuda()
+criterion = nn.modules.loss.KLDivLoss()
 
-optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.9)
+optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
 #optimizer = optim.RMSprop(model.parameters(), lr=0.01, alpha=0.9)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True, patience = 8, eps=0.00001, min_lr=0.000001)
 """
@@ -76,7 +77,7 @@ for i, data in enumerate(train_loader):
         break
 """
 base_dir = '/home/nemodrive3/workspace/andreim/upb_data/logs/'
-writer = SummaryWriter(base_dir + '/runs')
+writer = SummaryWriter(base_dir + '/runs/kl_div_sgd')
 
 print_each = 50
 step = print_each
@@ -95,8 +96,10 @@ for epoch in range(5000):
         outputs = model(inputs.float())
         #outputs = outputs.unsqueeze(2)
         #labels = labels.unsqueeze(2)
+        outputs = nn.functional.log_softmax(outputs)
+        labels = nn.functional.softmax(labels)
         loss = criterion(outputs.double(), labels.double())
-        loss = torch.mul(loss, loss)
+
         loss.backward()
         optimizer.step()
         # print statistics
@@ -105,7 +108,7 @@ for epoch in range(5000):
         if i % print_each == print_each - 1:  # print every 50 mini-batches
             print('[%d, %5d] Training loss: %.9f' %
                   (epoch + 1, i + 1, running_loss / print_each))
-            with open(base_dir + 'epochs_bcewl.txt', 'a+') as f:
+            with open(base_dir + 'epochs_kl_div_sgd.txt', 'a+') as f:
                 f.write('[%d, %5d] Training loss: %.9f\n' %
                         (epoch + 1, i + 1, running_loss / print_each))
             running_loss = 0.0
@@ -160,8 +163,9 @@ for epoch in range(5000):
                     eval_outputs = model(eval_inputs.float())
                     #eval_outputs = eval_outputs.unsqueeze(2)
                     #eval_labels = eval_labels.unsqueeze(2)
-                    eval_loss = criterion(eval_outputs.double(), eval_labels.double())
-                    eval_loss = torch.mul(eval_loss, eval_loss)
+                    eval_outputs = nn.functional.log_softmax(eval_outputs)
+                    eval_labels = nn.functional.softmax(eval_labels)
+                    eval_loss = criterion(eval_outputs, eval_labels.float())
                     total_eval_loss += eval_loss.item()
                     num_eval += 1
 
@@ -188,15 +192,15 @@ for epoch in range(5000):
             writer.add_scalar('Validation loss', total_eval_loss, step + 1)
 
             print('[%d, %5d] Eval loss: %.9f' % (epoch + 1, i + 1, total_eval_loss))
-            with open(base_dir + 'eval_epochs_bcewl.txt', 'a+') as f:
+            with open(base_dir + 'eval_epochs_kl_div_sgd.txt', 'a+') as f:
                 f.write('[%d, %5d] Eval loss: %.9f\n' % (epoch + 1, i + 1, total_eval_loss))
             if total_eval_loss < best_eval_loss:
                 best_eval_loss = total_eval_loss
-                torch.save(model.state_dict(), (base_dir + 'eval_checkpoints/best_eval_model_bcewl_%d_%d') % (epoch + 1, i + 1))
+                torch.save(model.state_dict(), (base_dir + 'eval_checkpoints/best_eval_model_kl_div_sgd_%d_%d') % (epoch + 1, i + 1))
             scheduler.step(total_eval_loss)
 
 
-    torch.save(model.state_dict(), (base_dir + 'train_checkpoints/baseline_model_bcewl%d') % (epoch))
+    torch.save(model.state_dict(), (base_dir + 'train_checkpoints/baseline_model_kl_div_sgd%d') % (epoch))
 
 writer.export_scalars_to_json(base_dir + 'all_scalars.json')
 writer.close()
