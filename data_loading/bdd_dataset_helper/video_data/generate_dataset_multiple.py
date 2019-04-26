@@ -3,7 +3,7 @@ import random
 from shutil import copy
 from argparse import ArgumentParser
 
-TRAIN = 0.8
+TRAIN = 1
 VALID = 1 - TRAIN
 
 
@@ -33,6 +33,7 @@ def split_data(args):
     train_inds = sorted(random.sample(range(len(info_files)), train_len))
     for ind in reversed(train_inds):
         vid_name = info_files[ind].split('.')[0] + ".mov"
+        print(vid_name)
         info_file = os.path.join(args.info_dir, info_files[ind])
         vid_file = video_dict[info_files[ind]]
 
@@ -50,15 +51,15 @@ def split_data(args):
         copy(info_file, os.path.join(args.destination, 'validation/info/', info_files[ind]))
         copy(vid_file, os.path.join(args.destination, 'validation/data/', vid_name))
         #del info_files[ind]
-
+    '''
     for file in info_files:
         vid_name = file.split('.')[0] + ".mov"
         info_file = os.path.join(args.info_dir, file)
         vid_file = video_dict[info_files[ind]]
 
-        copy(info_file, os.path.join(args.destination, 'test/info/', info_files[ind]))
-        copy(vid_file, os.path.join(args.destination, 'test/data/', vid_name))
-
+        copy(info_file, os.path.join(args.destination, 'test_demo/info/', info_files[ind]))
+        copy(vid_file, os.path.join(args.destination, 'test_demo/data/', vid_name))
+    '''
 if __name__ == '__main__':
     arg_parser = ArgumentParser()
     arg_parser.add_argument('--info_dir',
@@ -71,7 +72,7 @@ if __name__ == '__main__':
         help='path to the directory containing the videos')
     arg_parser.add_argument('--destination',
         type=str,
-        default='/home/nemodrive3/workspace/andreim/upb_data/dataset',
+        default='/home/nemodrive3/workspace/andreim/upb_data/dataset_demo',
         help='path to the destination directory')
 
     args = arg_parser.parse_args()

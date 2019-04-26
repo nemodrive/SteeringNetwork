@@ -8,13 +8,17 @@ import pickle as pkl
 from torch.utils.data import Dataset
 from torch.utils.data.sampler import Sampler
 
+from utils import transformation
+
 import matplotlib.pyplot as plt
 
 
 def gaussian_distribution(x, mean, div):
     div **= 2
     ct_term = 1. / np.sqrt(2 * np.pi * div)
-    return ct_term * np.exp(-np.power(x - mean, 2) / (2 * div))
+    distribution = ct_term * np.exp(-np.power(x - mean, 2) / (2 * div))
+    distribution /= distribution.sum()
+    return distribution
 
 
 class BDDVImageDataset(Dataset):
@@ -64,6 +68,9 @@ class BDDVImageDataset(Dataset):
     def __len__(self):
         return self.len
 
+    def _normalize(self, img):
+        return (img - 128.0) / 128.0
+
     def __getitem__(self, index):
         # Determine which video to extract the sequence of frames from
         video_file_index = self._get_video_index(index)
@@ -85,11 +92,17 @@ class BDDVImageDataset(Dataset):
             info = list(pd.read_csv(viditems[1][1]).iloc[frame_index,1:])
             images.append(frame)
             target_vectors.append(info)
-        images = np.array(images, dtype=np.float)
 
-        # if self.train:
-        #     for i in range(len(images)):
-        #         images[i] = self.augmentation(images[i])
+        # Augment data
+        if self.train:
+            for i in range(len(images)):
+                images[i], steer = self.augmentation((images[i], target_vectors[i][-1], target_vectors[i][3]))
+                images[i] = self._normalize(images[i])
+        else:
+            for i in range(len(images)):
+                images[i] = transformation.Crop.crop_center(images[i], down=0.4, up=0.1)
+
+        images = np.array(images)
 
         # if self.transform is not None:
         #     for i in range(len(images)):

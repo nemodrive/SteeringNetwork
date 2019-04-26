@@ -34,28 +34,53 @@ train_loader = loader.get_train_loader()
 test_loader = loader.get_test_loader()
 stop = False
 
+weights = torch.ones(1, 180).long()
+'''
+for _, data in enumerate(train_loader):
+    a = data[2]
+    view = a.transpose(1, 0)
+    m = view==view.max(0)[0]
+    m = m.transpose(1, 0)
+    weights = torch.add(weights, m.sum(0))
+
+weights = torch.div(torch.ones(1, 180), weights.float())
+weights = weights[0].double()
+print(weights)
+'''
+#plt.plot(weights.numpy())
+#plt.show()
+
 
 def close_event():
     plt.close()
 
+n = 181
 
 model = xception_backbone.xception(None, None, 1000)
-model.last_linear = nn.Linear(2048, 180)
+model.last_linear = nn.Sequential(
+            nn.Linear(2048, 1000),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(1000, 500),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(500, n)
+        )
 model = model.cuda()
 
-n = 180
 x = np.arange(n, dtype=np.float32)
 M = (x[:,np.newaxis] - x[np.newaxis,:]) ** 2
 M /= M.max()
 #criterion = WassersteinLossStab(torch.from_numpy(M), lam=0.1)
 #criterion = nn.modules.loss.BCELoss().cuda()
-#criterion = nn.modules.loss.BCEWithLogitsLoss().cuda()
+#criterion = nn.modules.loss.BCEWithLogitsLoss(weight=weights).cuda() -- OK
+criterion = nn.modules.loss.KLDivLoss().cuda()
 #criterion = EMDModule().cuda()
-criterion = nn.modules.loss.KLDivLoss()
+#criterion = nn.modules.loss.KLDivLoss()
 
-optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+optimizer = optim.SGD(model.parameters(), lr=1e-2, momentum=0.9)
 #optimizer = optim.RMSprop(model.parameters(), lr=0.01, alpha=0.9)
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True, patience = 8, eps=0.00001, min_lr=0.000001)
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True, patience=8, eps=0.9, min_lr=0.000001)
 """
 # data load test
 for i, data in enumerate(train_loader):
@@ -77,13 +102,16 @@ for i, data in enumerate(train_loader):
         break
 """
 base_dir = '/home/nemodrive3/workspace/andreim/upb_data/logs/'
-writer = SummaryWriter(base_dir + '/runs/kl_div_sgd')
 
 print_each = 50
 step = print_each
-eval_each = 500
+eval_each = 1
 
 best_eval_loss = float('inf')
+
+writer = SummaryWriter(base_dir + '/runs/cross_entropy_sgd_scs')
+
+train_loader = loader.get_train_loader()
 
 for epoch in range(5000):
 
@@ -94,11 +122,15 @@ for epoch in range(5000):
         optimizer.zero_grad()
         inputs, labels = data[0].cuda(), data[2].cuda()
         outputs = model(inputs.float())
-        #outputs = outputs.unsqueeze(2)
-        #labels = labels.unsqueeze(2)
-        outputs = nn.functional.log_softmax(outputs)
-        labels = nn.functional.softmax(labels)
-        loss = criterion(outputs.double(), labels.double())
+        outputs = nn.functional.log_softmax(outputs, dim=1)
+        print(outputs.sum(dim=1))
+        # outputs = outputs.unsqueeze(2)
+        # labels = labels.unsqueeze(2)
+        # outputs = nn.functional.softmax(outputs)
+        # labels = nn.functional.log_softmax(labels)
+        # labels = nn.functional.softmax(labels, dim=1)
+        loss = torch.mean(-torch.sum(labels.float() * outputs, dim=1))
+        # loss = criterion(outputs.double(), labels.double())
 
         loss.backward()
         optimizer.step()
@@ -108,7 +140,7 @@ for epoch in range(5000):
         if i % print_each == print_each - 1:  # print every 50 mini-batches
             print('[%d, %5d] Training loss: %.9f' %
                   (epoch + 1, i + 1, running_loss / print_each))
-            with open(base_dir + 'epochs_kl_div_sgd.txt', 'a+') as f:
+            with open(base_dir + 'cross_entropy_sgd.txt', 'a+') as f:
                 f.write('[%d, %5d] Training loss: %.9f\n' %
                         (epoch + 1, i + 1, running_loss / print_each))
             running_loss = 0.0
@@ -153,54 +185,54 @@ for epoch in range(5000):
 
             step += print_each
 
-        if i % eval_each == eval_each - 1:
-            model.eval()
-            with torch.no_grad():
-                total_eval_loss = 0.0
-                num_eval = 0
-                for j, eval_data in enumerate(test_loader):
-                    eval_inputs, eval_labels = eval_data[0].cuda(), eval_data[2].cuda()
-                    eval_outputs = model(eval_inputs.float())
-                    #eval_outputs = eval_outputs.unsqueeze(2)
-                    #eval_labels = eval_labels.unsqueeze(2)
-                    eval_outputs = nn.functional.log_softmax(eval_outputs)
-                    eval_labels = nn.functional.softmax(eval_labels)
-                    eval_loss = criterion(eval_outputs, eval_labels.float())
-                    total_eval_loss += eval_loss.item()
-                    num_eval += 1
+    if epoch % eval_each == eval_each - 1:
+        model.eval()
+        with torch.no_grad():
+            total_eval_loss = 0.0
+            num_eval = 0
+            for j, eval_data in enumerate(test_loader):
+                eval_inputs, eval_labels = eval_data[0].cuda(), eval_data[2].cuda()
+                eval_outputs = model(eval_inputs.float())
+                #eval_outputs = eval_outputs.unsqueeze(2)
+                #eval_labels = eval_labels.unsqueeze(2)
+                eval_outputs = nn.functional.log_softmax(eval_outputs, dim=1)
+                eval_labels = eval_labels.float()
+                eval_loss = torch.mean(-torch.sum(eval_labels * eval_outputs, dim=1))
+                total_eval_loss += eval_loss.item()
+                num_eval += 1
 
-                    '''
-                    for it, image in enumerate(eval_data[0]):
-                        image = image[0:1]
-                        copy = image.numpy()
-                        copy = copy.reshape((180, 320)) / 255.0
-                        cv2.imshow('frame', copy)
-                        if cv2.waitKey(1) & 0xFF == ord('q'):
-                            stop = True
-                            break
-                        fig = plt.figure()
-                        timer = fig.canvas.new_timer(interval=2000)
-                        timer.add_callback(close_event)
-                        plt.plot(nn.Softmax()(data[2][it]).numpy())
-                        plt.plot(eval_outputs[it].squeeze(-1).cpu().numpy())
-                        plt.show()
-                    if stop:
+                '''
+                for it, image in enumerate(eval_data[0]):
+                    image = image[0:1]
+                    copy = image.numpy()
+                    copy = copy.reshape((180, 320)) / 255.0
+                    cv2.imshow('frame', copy)
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        stop = True
                         break
-                    '''
-            total_eval_loss /= num_eval
+                    fig = plt.figure()
+                    timer = fig.canvas.new_timer(interval=2000)
+                    timer.add_callback(close_event)
+                    plt.plot(nn.Softmax()(data[2][it]).numpy())
+                    plt.plot(eval_outputs[it].squeeze(-1).cpu().numpy())
+                    plt.show()
+                if stop:
+                    break
+                '''
+        total_eval_loss /= num_eval
 
-            writer.add_scalar('Validation loss', total_eval_loss, step + 1)
+        writer.add_scalar('Validation loss', total_eval_loss, step + 1)
 
-            print('[%d, %5d] Eval loss: %.9f' % (epoch + 1, i + 1, total_eval_loss))
-            with open(base_dir + 'eval_epochs_kl_div_sgd.txt', 'a+') as f:
-                f.write('[%d, %5d] Eval loss: %.9f\n' % (epoch + 1, i + 1, total_eval_loss))
-            if total_eval_loss < best_eval_loss:
-                best_eval_loss = total_eval_loss
-                torch.save(model.state_dict(), (base_dir + 'eval_checkpoints/best_eval_model_kl_div_sgd_%d_%d') % (epoch + 1, i + 1))
-            scheduler.step(total_eval_loss)
+        print('[%d] Eval loss: %.9f' % (epoch + 1, total_eval_loss))
+        with open(base_dir + 'cross_entropy_sgd.txt', 'a+') as f:
+            f.write('[%d] Eval loss: %.9f\n' % (epoch + 1, total_eval_loss))
+        if total_eval_loss < best_eval_loss:
+            best_eval_loss = total_eval_loss
+            torch.save(model.state_dict(), (base_dir + 'eval_checkpoints/cross_entropy_sgd_%d_%d') % (epoch + 1, i + 1))
+        scheduler.step(total_eval_loss)
 
 
-    torch.save(model.state_dict(), (base_dir + 'train_checkpoints/baseline_model_kl_div_sgd%d') % (epoch))
+    torch.save(model.state_dict(), (base_dir + 'train_checkpoints/cross_entropy_sgd%d') % (epoch))
 
 writer.export_scalars_to_json(base_dir + 'all_scalars.json')
 writer.close()

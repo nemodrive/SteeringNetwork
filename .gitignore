@@ -5,3 +5,4 @@ __pycache__/
 *.json
 *.jpg
 *.idea
+test_data/

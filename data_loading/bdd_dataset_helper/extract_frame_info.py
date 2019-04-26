@@ -291,7 +291,7 @@ if __name__ == '__main__':
     arg_parser.add_argument(
         '--temporal_downsample_factor',
         type=int,
-        default=5,
+        default=1,
         help='The original video is in 15 FPS, this flag optionally downsample the video temporally')
 
     arg_parser.add_argument(

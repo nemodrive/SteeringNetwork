@@ -4,6 +4,7 @@ import glob
 import time
 import imgaug as ig
 from imgaug import augmenters as iga
+import numpy as np
 
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
@@ -12,12 +13,19 @@ from collections import OrderedDict
 from .data_loader import DataLoaderBase
 from .dataset import get_sampler
 
+from utils import transformation
+
+import NemoDriveSimulator.augmentator as augmentator
+import NemoDriveSimulator.evaluator as evaluator
+
+path = '/home/nemodrive3/workspace/andreim/SteeringNetwork/NemoDriveSimulator/test_data/1c820d64b4af4c85.json'
 
 class BDDVImageAugmentation(object):
     def __init__(self, seed):
         st = lambda aug: iga.Sometimes(0.4, aug)
         oc = lambda aug: iga.Sometimes(0.3, aug)
         rl = lambda aug: iga.Sometimes(0.09, aug)
+        self.augmentor = augmentator.Augmentator(path)
         self.seq = iga.Sequential(
             [
                 rl(iga.GaussianBlur(
@@ -45,9 +53,27 @@ class BDDVImageAugmentation(object):
 
         ig.seed(seed)
 
-    def __call__(self, image):
-        return self.seq.augment_image(image)
+    def __call__(self, data, max_transl=1.5, max_rotation=np.pi/18.):
+        steer = evaluator.AugmentationEvaluator.get_steer(data[1], data[2], 0.33)
 
+        # generate random translation and rotation
+        transl = max_transl * 2 * (np.random.rand() - 0.5)
+        rotation = max_rotation * 2 * (np.random.rand() - 0.5)
+
+        image = data[0]
+
+        # translation & rotatiton augmentation
+        if (np.random.rand() <= 0.3):
+            data = list(data)
+            data[1] = steer
+            image, steer, _, _, _ = self.augmentor.augment(data, transl, rotation)
+
+
+        image = transformation.Crop.crop_center(image, down=0.4, up=0.1)
+
+        # classic augmentation
+        image = self.seq.augment_image(image)
+        return image, steer
 
 class BDDVImageLoader(DataLoaderBase):
     def __init__(self, cfg):
@@ -124,8 +150,8 @@ class BDDVImageLoader(DataLoaderBase):
         return DataLoader(
             train_dataset,
             batch_size=self._batch_size,
-            shuffle=False,
-            sampler=sampler,
+            shuffle=self._shuffle,
+            #sampler=sampler,
             num_workers=self._no_workers)
 
     def get_test_loader(self):
