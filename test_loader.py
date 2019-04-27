@@ -80,19 +80,13 @@ class MySecondModel(nn.Module):
             nn.ReLU(),
         )
 
-        self.classifier = nn.Sequential(
-            nn.Linear(64 * 5 * 20, 1024),
-            nn.ReLU(),
-            nn.Dropout(p=0.2),
-            nn.Linear(1024, 512),
-            nn.ReLU(),
-            nn.Dropout(p=0.2),
-            nn.Linear(512, no_outputs)
-        )
+        self.classifier = nn.Linear(64 * 5 * 20 + 1, no_outputs)
 
-    def forward(self, x):
+
+    def forward(self, x, speeds):
         x = self.features(x)
         x = x.reshape(x.shape[0], -1)
+        x = torch.cat((x, speeds), dim=1)
         x = self.classifier(x)
         return x
 
@@ -131,8 +125,8 @@ for epoch in range(5000):
         optimizer.zero_grad()
 
         # pass inputs through model
-        inputs, labels = data[0].cuda(), data[2].cuda()
-        outputs = model(inputs.float())
+        inputs, speed, labels = data[0].cuda(), data[1].cuda(), data[2].cuda()
+        outputs = model(inputs.float(), speed.float())
 
         # show image & plot distributions
         # image = inputs.cpu().numpy()[0]

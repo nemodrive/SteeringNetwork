@@ -55,24 +55,25 @@ class BDDVImageAugmentation(object):
 
         ig.seed(seed)
 
-    def __call__(self, data, max_transl=1.5, max_rotation=np.pi/18.):
+    def __call__(self, data, max_transl=1.5, max_rotation=np.pi/18., forward_course=10.):
         data = list(data)
 
         # translation & rotatiton augmentation
-        if np.random.rand() <= 0.7:
+        if np.random.rand() <= 0.5 and -forward_course <= data[1] <= forward_course:
+            speed, dt = data[2], 0.33
+
             # generate random translation and rotation
             translation = max_transl * 2 * (np.random.rand() - 0.5)
             rotation = max_rotation * 2 * (np.random.rand() - 0.5)
 
             # convert course in steer
-            steer = evaluator.AugmentationEvaluator.get_steer(data[1], data[2], 0.33)
+            steer = evaluator.AugmentationEvaluator.get_steer(data[1], speed, dt)
             data[1] = steer
 
             # augment by translation and rotation
             image, steer, _, _, _ = self.augmentor.augment(data, translation, rotation)
 
             # update data
-            speed, dt = data[2], 0.33
             data[0], data[1] = image, evaluator.AugmentationEvaluator.get_course(steer, speed, dt)
 
         # classic augmentation

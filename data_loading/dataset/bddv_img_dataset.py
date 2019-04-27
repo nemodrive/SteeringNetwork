@@ -150,7 +150,7 @@ class BDDVImageDataset(Dataset):
         # plt.plot(np.copy(self._bins) + 1.0 / len(self._bins), steer_distribution)
         # plt.show()
 
-        return np.transpose(images, (2, 0, 1)), speed / 80.0, \
+        return np.transpose(images, (2, 0, 1)), speed, \
                 steer_distribution, cmd_signals
 
     def _regression_batch(self, images, target_vectors, cmd_signals):
