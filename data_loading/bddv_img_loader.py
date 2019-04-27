@@ -5,6 +5,7 @@ import time
 import imgaug as ig
 from imgaug import augmenters as iga
 import numpy as np
+from copy import deepcopy
 
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
@@ -15,10 +16,11 @@ from .dataset import get_sampler
 
 from utils import transformation
 
+
 import NemoDriveSimulator.augmentator as augmentator
 import NemoDriveSimulator.evaluator as evaluator
 
-path = '/home/andrei/workspace/nemodrive/steeringnetwork/NemoDriveSimulator/test_data/1c820d64b4af4c85.json'
+path = '/home/robert/PycharmProjects/NemoDriveSimulator/test_data/0ba94a1ed2e0449c.json'
 
 class BDDVImageAugmentation(object):
     def __init__(self, seed):
@@ -54,25 +56,28 @@ class BDDVImageAugmentation(object):
         ig.seed(seed)
 
     def __call__(self, data, max_transl=1.5, max_rotation=np.pi/18.):
-        steer = evaluator.AugmentationEvaluator.get_steer(data[1], data[2], 0.33)
-
-        # generate random translation and rotation
-        transl = max_transl * 2 * (np.random.rand() - 0.5)
-        rotation = max_rotation * 2 * (np.random.rand() - 0.5)
-
-        image = data[0]
+        data = list(data)
 
         # translation & rotatiton augmentation
-        if (np.random.rand() <= 0.3):
-            data = list(data)
-            data[1] = steer
-            #image, steer, _, _, _ = self.augmentor.augment(data, transl, rotation)
+        if np.random.rand() <= 0.7:
+            # generate random translation and rotation
+            translation = max_transl * 2 * (np.random.rand() - 0.5)
+            rotation = max_rotation * 2 * (np.random.rand() - 0.5)
 
-        image = transformation.Crop.crop_center(image, down=0.4, up=0.1)
+            # convert course in steer
+            steer = evaluator.AugmentationEvaluator.get_steer(data[1], data[2], 0.33)
+            data[1] = steer
+
+            # augment by translation and rotation
+            image, steer, _, _, _ = self.augmentor.augment(data, translation, rotation)
+
+            # update data
+            speed, dt = data[2], 0.33
+            data[0], data[1] = image, evaluator.AugmentationEvaluator.get_course(steer, speed, dt)
 
         # classic augmentation
-        #image = self.seq.augment_image(image)
-        return image, steer
+        data[0] = self.seq.augment_image(data[0])
+        return data[0], data[1]
 
 class BDDVImageLoader(DataLoaderBase):
     def __init__(self, cfg):

@@ -17,7 +17,7 @@ def gaussian_distribution(x, mean, div):
     div **= 2
     ct_term = 1. / np.sqrt(2 * np.pi * div)
     distribution = ct_term * np.exp(-np.power(x - mean, 2) / (2 * div))
-    #distribution /= distribution.sum()
+    distribution /= distribution.sum()
     return distribution
 
 
@@ -75,21 +75,20 @@ class BDDVImageDataset(Dataset):
         # Determine which video to extract the sequence of frames from
         video_file_index = self._get_video_index(index)
         frame_index = index - self.start_frames[video_file_index]
-        #print(video_file_index)
+
         # Fix frame number to prevent overflow
         if index + self.cfg.data_info.frame_seq_len > self.start_frames[video_file_index + 1]:
             frame_index -= index + self.cfg.data_info.frame_seq_len - self.start_frames[video_file_index + 1]
 
         # Get frames and frame info
         viditems = list(self.image_data.items())[video_file_index]
-        vidname = viditems[0]
         video_dir = viditems[1][0]
 
         images = []
         target_vectors = []
         for i in range(0, self.cfg.data_info.frame_seq_len):
             frame = cv2.imread(os.path.join(video_dir, 'frame' + str(frame_index + i) + '.jpg'))
-            info = list(pd.read_csv(viditems[1][1]).iloc[frame_index,1:])
+            info = list(pd.read_csv(viditems[1][1]).iloc[frame_index, 1:])
             images.append(frame)
             target_vectors.append(info)
 
@@ -98,26 +97,18 @@ class BDDVImageDataset(Dataset):
             for i in range(len(images)):
                 images[i], steer = self.augmentation((images[i], target_vectors[i][-1], target_vectors[i][3]))
                 images[i] = self._normalize(images[i])
+                images[i] = transformation.Crop.crop_center(images[i], down=0.4, up=0.1)
         else:
             for i in range(len(images)):
+                images[i] = self._normalize(images[i])
                 images[i] = transformation.Crop.crop_center(images[i], down=0.4, up=0.1)
-
         images = np.array(images)
-
-        # if self.transform is not None:
-        #     for i in range(len(images)):
-        #         images[i] = self.transform(images[i])
 
         # Concatenate channels from several images
         images = images.reshape(self.image_height, self.image_width,
                 3 * self.cfg.data_info.frame_seq_len)
         cmd_signals = [t[self.tag_names.index('Steer')] for t in target_vectors]
         cmd_signals = np.array(cmd_signals, dtype=np.int)
-
-        # print("Steer", cmd_signals, np.array([t[self.tag_names.index('Steer Angle')] * 180 / math.pi for t in target_vectors]))
-        # print("Course", np.array([t[self.tag_names.index('Course')] * 180 / math.pi for t in target_vectors]))
-        # plt.imshow(np.array(images, dtype=np.int))
-        # plt.show()
 
         return self._batch(images, target_vectors, cmd_signals)
 
