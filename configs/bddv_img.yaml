@@ -60,12 +60,12 @@ dataset: &dataset
   name: "BDDVImageDataset"
   sampler: *sampler
   data_info: *data_info
-  dataset_path: "/home/robert/PycharmProjects/SteeringNetwork/data/validation_frames"
-  info_path: "/home/robert/PycharmProjects/SteeringNetwork/data/info"
-  dataset_eval_path: "/home/robert/PycharmProjects/SteeringNetwork/data/validation_frames"
-  info_eval_path: "/home/robert/PycharmProjects/SteeringNetwork/data/info"
-  dataset_test_path: "/home/robert/PycharmProjects/SteeringNetwork/data/validation_frames"
-  info_test_path: "/home/robert/PycharmProjects/SteeringNetwork/data/info"
+  dataset_path: "/home/nemodrive3/workspace/andreim/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/train_frames"
+  info_path: "/home/nemodrive3/workspace/andreim/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/train/info"
+  dataset_eval_path: "/home/nemodrive3/workspace/andreim/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/validation_frames"
+  info_eval_path: "/home/nemodrive3/workspace/andreim/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/validation/info"
+  dataset_test_path: "/home/nemodrive3/workspace/andreim/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/test_frames"
+  info_test_path: "/home/nemodrive3/workspace/andreim/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/test/info"
   video_metadata_path: "/home/andrei/storage/nemodrive/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/train.metadata.pkl"
   sampling_factor: 3
   dispersion: 0.15
