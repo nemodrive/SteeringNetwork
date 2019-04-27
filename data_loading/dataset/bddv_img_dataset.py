@@ -17,7 +17,7 @@ def gaussian_distribution(x, mean, div):
     div **= 2
     ct_term = 1. / np.sqrt(2 * np.pi * div)
     distribution = ct_term * np.exp(-np.power(x - mean, 2) / (2 * div))
-    distribution /= distribution.sum()
+    #distribution /= distribution.sum()
     return distribution
 
 

@@ -18,7 +18,7 @@ from utils import transformation
 import NemoDriveSimulator.augmentator as augmentator
 import NemoDriveSimulator.evaluator as evaluator
 
-path = '/home/nemodrive3/workspace/andreim/SteeringNetwork/NemoDriveSimulator/test_data/1c820d64b4af4c85.json'
+path = '/home/andrei/workspace/nemodrive/steeringnetwork/NemoDriveSimulator/test_data/1c820d64b4af4c85.json'
 
 class BDDVImageAugmentation(object):
     def __init__(self, seed):
@@ -66,13 +66,12 @@ class BDDVImageAugmentation(object):
         if (np.random.rand() <= 0.3):
             data = list(data)
             data[1] = steer
-            image, steer, _, _, _ = self.augmentor.augment(data, transl, rotation)
-
+            #image, steer, _, _, _ = self.augmentor.augment(data, transl, rotation)
 
         image = transformation.Crop.crop_center(image, down=0.4, up=0.1)
 
         # classic augmentation
-        image = self.seq.augment_image(image)
+        #image = self.seq.augment_image(image)
         return image, steer
 
 class BDDVImageLoader(DataLoaderBase):

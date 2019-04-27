@@ -1,0 +1,21 @@
+ls -d /home/andrei/storage/nemodrive/25_nov/export_session_0/good/*-0.mov >> /home/andrei/storage/nemodrive/upb_data/video_index.txt
+ls -d /home/andrei/storage/nemodrive/25_nov/export_session_1/good/*-0.mov >> /home/andrei/storage/nemodrive/upb_data/video_index.txt
+ls -d /home/andrei/storage/nemodrive/25_nov/export_session_2/good/*-0.mov >> /home/andrei/storage/nemodrive/upb_data/video_index.txt
+ls -d /home/andrei/storage/nemodrive/15_nov/export_session_0/good/*-0.mov >> /home/andrei/storage/nemodrive/upb_data/video_index.txt
+ls -d /home/andrei/storage/nemodrive/18_nov/export_session_0/good/*-0.mov >> /home/andrei/storage/nemodrive/upb_data/video_index.txt
+ls -d /home/andrei/storage/nemodrive/18_nov/export_session_1/good/*-0.mov >> /home/andrei/storage/nemodrive/upb_data/video_index.txt
+ls -d /home/andrei/storage/nemodrive/18_nov/export_session_2/good/*-0.mov >> /home/andrei/storage/nemodrive/upb_data/video_index.txt
+ls -d /home/andrei/storage/nemodrive/24_nov/export_session_0/good/*-0.mov >> /home/andrei/storage/nemodrive/upb_data/video_index.txt
+ls -d /home/andrei/storage/nemodrive/24_nov/export_session_1/good/*-0.mov >> /home/andrei/storage/nemodrive/upb_data/video_index.txt
+
+python extract_frame_info.py --video_index /home/andrei/storage/nemodrive/upb_data/video_index.txt --output_dir /home/andrei/storage/nemodrive/upb_data/extracted_frame_info --temporal_downsample_factor 10
+
+python add_steering_prediction.py --data_dir /home/andrei/storage/nemodrive/upb_data/extracted_frame_info --time_to_steer 333
+
+python generate_dataset_multiple.py --info_dir /home/andrei/storage/nemodrive/upb_data/extracted_frame_info/ --video_index /home/andrei/storage/nemodrive/upb_data/video_index.txt
+
+python split_videos_in_frames.py --video_dir /home/andrei/storage/nemodrive/upb_data/dataset/train/data --output_dir /home/andrei/storage/nemodrive/upb_data/dataset/train_frames --output_width 320 --sample_rate 10
+
+python split_videos_in_frames.py --video_dir /home/andrei/storage/nemodrive/upb_data/dataset/test/data --output_dir /home/andrei/storage/nemodrive/upb_data/dataset/test_frames --output_width 320 --sample_rate 10
+
+python split_videos_in_frames.py --video_dir /home/andrei/storage/nemodrive/upb_data/dataset/validation/data --output_dir /home/andrei/storage/nemodrive/upb_data/dataset/validation_frames --output_width 320 --sample_rate 10
