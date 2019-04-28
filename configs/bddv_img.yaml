@@ -7,7 +7,7 @@ title: "Conditonal Imitation Learning"
 plots: "tensorboard" # can be "matplotlib", "tensorboard" or "both"
 
 general:
-  batch_size: &batch_size 20
+  batch_size: &batch_size 256
   use_cuda: &use_cuda yes
   seed: 3
 
