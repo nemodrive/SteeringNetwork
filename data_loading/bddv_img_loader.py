@@ -59,7 +59,7 @@ class BDDVImageAugmentation(object):
         data = list(data)
 
         # translation & rotatiton augmentation
-        if np.random.rand() <= 0.6:
+        if np.random.rand() <= 0.5:
             speed, dt = data[2], 0.33
 
             # generate random translation and rotation
@@ -157,7 +157,7 @@ class BDDVImageLoader(DataLoaderBase):
             train_dataset,
             batch_size=self._batch_size,
             shuffle=self._shuffle,
-            #sampler=sampler,
+            sampler=sampler,
             num_workers=self._no_workers)
 
     def get_test_loader(self):
