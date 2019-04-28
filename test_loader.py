@@ -36,17 +36,18 @@ class MyModel(nn.Module):
         super(MyModel, self).__init__()
         self.features = xception_backbone.xception(None, None, 1000)
         self.last_linear = nn.Sequential(
-            nn.Linear(1000, 1000),
+            nn.Linear(1001, 500),
             nn.ReLU(),
             nn.Dropout(0.2),
-            nn.Linear(1000, 1000),
+            nn.Linear(500, 250),
             nn.ReLU(),
             nn.Dropout(0.2),
-            nn.Linear(1000, no_outputs)
+            nn.Linear(250, no_outputs)
         )
 
-    def forward(self, x):
+    def forward(self, x, speeds):
         x = self.features(x)
+        x = torch.cat((x, speeds), dim=1)
         x = self.last_linear(x)
         return x
 
@@ -86,7 +87,7 @@ class MySecondModel(nn.Module):
         x = self.classifier(x)
         return x
 
-model = MySecondModel(181)
+model = MyModel(181)
 model = model.cuda()
 print(model)
 

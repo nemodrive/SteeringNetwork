@@ -6,3 +6,4 @@ __pycache__/
 *.jpg
 *.idea
 test_data/
+logs/

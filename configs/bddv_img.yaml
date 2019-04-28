@@ -7,7 +7,7 @@ title: "Conditonal Imitation Learning"
 plots: "tensorboard" # can be "matplotlib", "tensorboard" or "both"
 
 general:
-  batch_size: &batch_size 256
+  batch_size: &batch_size 100
   use_cuda: &use_cuda yes
   seed: 3
 
@@ -68,7 +68,7 @@ dataset: &dataset
   info_test_path: "/home/nemodrive3/workspace/andreim/upb_data/dataset/train/info"
   video_metadata_path: "/home/andrei/storage/nemodrive/SteeringNetwork/data_loading/bdd_dataset_helper/video_data/train.metadata.pkl"
   sampling_factor: 3
-  dispersion: 0.025
+  dispersion: 0.05
 
 agent: &agent
   name: "BDDVImageAgent"
