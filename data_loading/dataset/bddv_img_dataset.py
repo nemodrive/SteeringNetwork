@@ -41,7 +41,6 @@ class BDDVImageDataset(Dataset):
         self.image_height = image_height
         self.transform = transform
         self.augmentation = augmentation
-        self._batch = self._regression_batch
 
         if nr_bins > 1:
             self._bins = np.arange(-1.0, 1.0, 2.0 / nr_bins)
@@ -87,15 +86,24 @@ class BDDVImageDataset(Dataset):
         images = []
         target_vectors = []
         for i in range(0, self.cfg.data_info.frame_seq_len):
+            # read data
             frame = cv2.imread(os.path.join(video_dir, 'frame' + str(frame_index + i) + '.jpg'))
             info = list(pd.read_csv(viditems[1][1]).iloc[frame_index, 1:])
+
+            # add frame
             images.append(frame)
             target_vectors.append(info)
 
         # Augment data
         if self.train:
             for i in range(len(images)):
-                images[i], steer = self.augmentation((images[i], target_vectors[i][-1], target_vectors[i][3]))
+                course = np.rad2deg(target_vectors[i][self.tag_names.index("Steer Angle")])
+                speed = target_vectors[i][self.tag_names.index('Linear Speed')]
+
+                # augment image
+                images[i], course = self.augmentation((images[i], course, speed))
+                target_vectors[i][-1] = np.deg2rad(course)
+
                 images[i] = self._normalize(images[i])
                 images[i] = transformation.Crop.crop_center(images[i], down=0.4, up=0.1)
         else:
@@ -105,12 +113,8 @@ class BDDVImageDataset(Dataset):
         images = np.array(images)
 
         # Concatenate channels from several images
-        images = images.reshape(self.image_height, self.image_width,
-                3 * self.cfg.data_info.frame_seq_len)
-        cmd_signals = [t[self.tag_names.index('Steer')] for t in target_vectors]
-        cmd_signals = np.array(cmd_signals, dtype=np.int)
-
-        return self._batch(images, target_vectors, cmd_signals)
+        images = images.reshape(self.image_height, self.image_width, 3 * self.cfg.data_info.frame_seq_len)
+        return self._batch(images, target_vectors)
 
     def _get_video_index(self, bucket_index):
         '''Do a binary search over the start bucket indices to find which video
@@ -126,7 +130,7 @@ class BDDVImageDataset(Dataset):
 
         return l
 
-    def _clasification_batch(self, images, target_vectors, cmd_signals):
+    def _clasification_batch(self, images, target_vectors):
         speed = np.array([t[self.tag_names.index('Linear Speed')] for t in target_vectors])
 
         def normalize_angle(x):
@@ -143,26 +147,7 @@ class BDDVImageDataset(Dataset):
             np.copy(self._bins) + 1.0 / len(self._bins), steer_mean_bin,
             self.cfg.dispersion)
 
-        # print("Steer and steer bin", steer_cmd, steer, steer_bin_no)
-        # plt.figure(1)
-        # plt.imshow(np.array(images, dtype=np.int))
-        # plt.figure(2)
-        # plt.plot(np.copy(self._bins) + 1.0 / len(self._bins), steer_distribution)
-        # plt.show()
-
-        return np.transpose(images, (2, 0, 1)), speed, \
-                steer_distribution, cmd_signals
-
-    def _regression_batch(self, images, target_vectors, cmd_signals):
-        control_cmds = []
-
-        control_cmds.append(self.tag_names.index('Steer'))
-        target_vect = np.array([t[control_cmds] for t in target_vectors])
-
-        speed = np.array([t[self.tag_names.index('Linear Speed')] for t in target_vectors])
-
-        return np.transpose(image, (2, 0, 1)), speed / 80.0, target_vect, \
-                cmd_signals
+        return np.transpose(images, (2, 0, 1)), speed, steer_distribution
 
 
 class BDDVImageSampler(Sampler):
