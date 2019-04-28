@@ -102,7 +102,7 @@ class BDDVImageDataset(Dataset):
 
                 # augment image
                 images[i], course = self.augmentation((images[i], course, speed))
-                target_vectors[i][-1] = np.deg2rad(course)
+                target_vectors[i][self.tag_names.index("Steer Angle")] = np.deg2rad(course)
 
                 images[i] = self._normalize(images[i])
                 images[i] = transformation.Crop.crop_center(images[i], down=0.4, up=0.1)

@@ -20,7 +20,7 @@ from utils import transformation
 import NemoDriveSimulator.augmentator as augmentator
 import NemoDriveSimulator.evaluator as evaluator
 
-path = './NemoDriveSimulator/test_data/0ba94a1ed2e0449c.json'
+path = '../NemoDriveSimulator/test_data/0ba94a1ed2e0449c.json'
 
 class BDDVImageAugmentation(object):
     def __init__(self, seed):
@@ -55,11 +55,11 @@ class BDDVImageAugmentation(object):
 
         ig.seed(seed)
 
-    def __call__(self, data, max_transl=1.5, max_rotation=np.pi/18., forward_course=5.):
+    def __call__(self, data, max_transl=2., max_rotation=np.pi/9.):
         data = list(data)
 
         # translation & rotatiton augmentation
-        if np.random.rand() <= 0.7 and -forward_course <= data[1] <= forward_course:
+        if np.random.rand() <= 0.9:
             speed, dt = data[2], 0.33
 
             # generate random translation and rotation
@@ -75,6 +75,7 @@ class BDDVImageAugmentation(object):
 
             # update data
             data[0], data[1] = image, evaluator.AugmentationEvaluator.get_course(steer, speed, dt)
+
 
         # classic augmentation
         data[0] = self.seq.augment_image(data[0])
