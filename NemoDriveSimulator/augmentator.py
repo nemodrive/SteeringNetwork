@@ -29,8 +29,8 @@ class Augmentator:
         # self.right_camera = self.data['cameras'][2]
 
         self.Res = np.array([
-            [360. / 1080., 0., 0.],
-            [0., 640. / 1920., 0.],
+            [180. / 1080., 0., 0.],
+            [0., 320. / 1920., 0.],
             [0., 0., 1.]
         ])
 
@@ -49,7 +49,7 @@ class Augmentator:
             [0.0, 0.0, 1.0, camera_position[2]]
         ])
 
-    def augment(self, data, translation, rotation, intersection_distance=10.):
+    def augment(self, data, translation, rotation, intersection_distance=5.):
         """
         Augment a frame
         Warning!!! this augmentation may work only for turns less than 180 degrees. For bigger turns, although it

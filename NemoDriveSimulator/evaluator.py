@@ -43,8 +43,8 @@ class AugmentationEvaluator:
         # self.right_camera = self.data['cameras'][2]
 
         self.Res = np.array([
-            [360. / 1080., 0., 0.],
-            [0., 640. / 1920., 0.],
+            [180. / 1080., 0., 0.],
+            [0., 320. / 1920., 0.],
             [0., 0., 1.]
         ])
 
