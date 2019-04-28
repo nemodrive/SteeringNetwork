@@ -53,26 +53,30 @@ class BDDVImageAugmentation(object):
 
         ig.seed(seed)
 
-    def __call__(self, data, max_transl=1.5, max_rotation=np.pi/18.):
-        steer = evaluator.AugmentationEvaluator.get_steer(data[1], data[2], 0.33)
-
-        # generate random translation and rotation
-        transl = max_transl * 2 * (np.random.rand() - 0.5)
-        rotation = max_rotation * 2 * (np.random.rand() - 0.5)
-
-        image = data[0]
+    def __call__(self, data, max_transl=1.5, max_rotation=np.pi/18., forward_course=5.):
+        data = list(data)
 
         # translation & rotatiton augmentation
-        if (np.random.rand() <= 0.3):
-            data = list(data)
-            data[1] = steer
-            #image, steer, _, _, _ = self.augmentor.augment(data, transl, rotation)
+        if np.random.rand() <= 0.6 and -forward_course <= data[1] <= forward_course:
+            speed, dt = data[2], 0.33
 
-        image = transformation.Crop.crop_center(image, down=0.4, up=0.1)
+            # generate random translation and rotation
+            translation = max_transl * 2 * (np.random.rand() - 0.5)
+            rotation = max_rotation * 2 * (np.random.rand() - 0.5)
+
+            # convert course in steer
+            steer = evaluator.AugmentationEvaluator.get_steer(data[1], speed, dt)
+            data[1] = steer
+
+            # augment by translation and rotation
+            image, steer, _, _, _ = self.augmentor.augment(data, translation, rotation)
+
+            # update data
+            data[0], data[1] = image, evaluator.AugmentationEvaluator.get_course(steer, speed, dt)
 
         # classic augmentation
-        #image = self.seq.augment_image(image)
-        return image, steer
+        data[0] = self.seq.augment_image(data[0])
+        return data[0], data[1]
 
 class BDDVImageLoader(DataLoaderBase):
     def __init__(self, cfg):
@@ -105,6 +109,7 @@ class BDDVImageLoader(DataLoaderBase):
             data_train[vidname] = (vid, info)
         data_eval = OrderedDict()
         video_eval = os.listdir(self._dataset_path_test)
+        print(self._dataset_path_test)
         for vid in video_eval:
             vidname = vid.split('.')[0]
             vid = os.path.join(self._dataset_path_test, vid)
@@ -150,7 +155,7 @@ class BDDVImageLoader(DataLoaderBase):
             train_dataset,
             batch_size=self._batch_size,
             shuffle=self._shuffle,
-            #sampler=sampler,
+            sampler=sampler,
             num_workers=self._no_workers)
 
     def get_test_loader(self):

@@ -19,6 +19,7 @@ class CloningNVIDIAModel(nn.Module):
             # input is batch_size x 3 x 66 x 200
             nn.Conv2d(3, 24, 5, stride=2, bias=False),
             nn.ELU(),
+
             nn.Conv2d(24, 36, 5, stride=2, bias=False),
             nn.ELU(),
             nn.BatchNorm2d(36),

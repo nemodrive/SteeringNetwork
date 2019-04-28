@@ -197,7 +197,7 @@ class Xception(nn.Module):
 
         x = F.adaptive_avg_pool2d(x, (1, 1))
         x = x.view(x.size(0), -1)
-        x = self.last_linear(x)
+        x = self.fc(x)
         return x
 
     def forward(self, input):
@@ -222,7 +222,4 @@ def xception(cfg, in_size, out_size=1000, pretrained='imagenet'):
         model.mean = settings['mean']
         model.std = settings['std']
 
-    # TODO: ugly
-    model.last_linear = model.fc
-    del model.fc
     return model
