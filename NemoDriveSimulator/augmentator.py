@@ -49,7 +49,7 @@ class Augmentator:
             [0.0, 0.0, 1.0, camera_position[2]]
         ])
 
-    def augment(self, data, translation, rotation, intersection_distance=5.):
+    def augment(self, data, translation, rotation, intersection_distance=7.5):
         """
         Augment a frame
         Warning!!! this augmentation may work only for turns less than 180 degrees. For bigger turns, although it

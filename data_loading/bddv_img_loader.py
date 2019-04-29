@@ -59,7 +59,7 @@ class BDDVImageAugmentation(object):
         data = list(data)
 
         # translation & rotatiton augmentation
-        if np.random.rand() <= 1.5:
+        if np.random.rand() <= 0.5:
             speed, dt = data[2], 0.33
 
             # generate random translation and rotation
