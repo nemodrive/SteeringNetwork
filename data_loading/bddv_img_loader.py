@@ -55,11 +55,11 @@ class BDDVImageAugmentation(object):
 
         ig.seed(seed)
 
-    def __call__(self, data, max_transl=2., max_rotation=np.pi/9.):
+    def __call__(self, data, max_transl=2., max_rotation=np.pi/18.):
         data = list(data)
 
         # translation & rotatiton augmentation
-        if np.random.rand() <= 0.5:
+        if np.random.rand() <= 1.5:
             speed, dt = data[2], 0.33
 
             # generate random translation and rotation

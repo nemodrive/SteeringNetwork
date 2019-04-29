@@ -105,14 +105,15 @@ class BDDVImageDataset(Dataset):
                 target_vectors[i][self.tag_names.index("Steer Angle")] = np.deg2rad(course)
 
                 images[i] = self._normalize(images[i])
-                images[i] = transformation.Crop.crop_center(images[i], down=0.4, up=0.1)
+                images[i] = transformation.Crop.crop_center(images[i], down=0.4, up=0.1, left=0.3, right=0.3)
         else:
             for i in range(len(images)):
                 images[i] = self._normalize(images[i])
-                images[i] = transformation.Crop.crop_center(images[i], down=0.4, up=0.1)
+                images[i] = transformation.Crop.crop_center(images[i], down=0.4, up=0.1, left=0.3, right=0.3)
         images = np.array(images)
 
         # Concatenate channels from several images
+        self.image_height, self.image_width = images[0].shape[:2]
         images = images.reshape(self.image_height, self.image_width, 3 * self.cfg.data_info.frame_seq_len)
         return self._batch(images, target_vectors)
 

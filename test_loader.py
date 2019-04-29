@@ -82,7 +82,7 @@ class MySecondModel(nn.Module):
         )
 
         self.classifier = nn.Sequential(
-            nn.Linear(64 * 5 * 20 + 1, 1024),
+            nn.Linear(64 * 5 * 12 + 1, 1024),
             nn.ReLU(),
             nn.Dropout(p=0.5),
             nn.Linear(1024, 512),
@@ -126,7 +126,7 @@ best_eval_loss = float('inf')
 writer = SummaryWriter(base_dir + '/runs/cross_entropy_sgd_scs')
 train_loader = loader.get_train_loader()
 
-for epoch in range(5000):
+for epoch in range(250):
     running_loss = 0.0
 
     for i, data in enumerate(train_loader):
@@ -236,8 +236,9 @@ for epoch in range(5000):
         scheduler.step(total_eval_loss)
 
     # save model
-    torch.save(model.state_dict(), (base_dir + 'train_checkpoints/DKL_%d') % (epoch))
-    print("Model saved")
+    if epoch % 5 == 0:
+        torch.save(model.state_dict(), (base_dir + 'train_checkpoints/DKL_%d') % (epoch))
+        print("Model saved")
 
 f.close()
 g.close()
