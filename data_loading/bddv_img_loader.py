@@ -3,6 +3,7 @@ import os
 import glob
 import time
 import imgaug as ig
+import cv2
 from imgaug import augmenters as iga
 import numpy as np
 from copy import deepcopy
@@ -55,8 +56,16 @@ class BDDVImageAugmentation(object):
 
         ig.seed(seed)
 
-    def __call__(self, data, max_transl=2., max_rotation=np.pi/18.):
+    def __call__(self, data, max_transl=2., max_rotation_y=np.pi/18., max_scale=0.15, max_rotation_z=10.):
         data = list(data)
+
+        if np.random.rand() <= 0.2:
+            alpha = max_rotation_z * 2 * (np.random.rand() - 0.5)
+            data[0] = BDDVImageAugmentation.rotate(data[0], alpha)
+            
+            factor = 1.0 - max_scale * 2 * (np.random.rand() - 0.5)
+            data[0] = BDDVImageAugmentation.scale(data[0], factor)
+
 
         # translation & rotatiton augmentation
         if np.random.rand() <= 0.5:
@@ -64,7 +73,7 @@ class BDDVImageAugmentation(object):
 
             # generate random translation and rotation
             translation = max_transl * 2 * (np.random.rand() - 0.5)
-            rotation = max_rotation * 2 * (np.random.rand() - 0.5)
+            rotation = max_rotation_y * 2 * (np.random.rand() - 0.5)
 
             # convert course in steer
             steer = evaluator.AugmentationEvaluator.get_steer(data[1], speed, dt)
@@ -76,10 +85,37 @@ class BDDVImageAugmentation(object):
             # update data
             data[0], data[1] = image, evaluator.AugmentationEvaluator.get_course(steer, speed, dt)
 
-
         # classic augmentation
         data[0] = self.seq.augment_image(data[0])
+
         return data[0], data[1]
+
+
+    @staticmethod
+    def scale(image, scale):
+        height, width, _ = image.shape
+        img = cv2.resize(image, None, fx=scale, fy=scale)
+        new_height, new_width, _ = img.shape
+
+        if scale > 1.0:
+            offset_height = (new_height - height) // 2
+            offset_width = (new_width - width) // 2
+            img = img[offset_height:offset_height + height, offset_width:offset_width + width, :]
+            return img
+
+        final_img = np.zeros_like(image)
+        offset_height = (height - new_height) // 2
+        offset_width = (width - new_width) // 2
+
+        final_img[offset_height:offset_height + new_height, offset_width:offset_width + new_width, :] = img
+        return final_img
+
+    @staticmethod
+    def rotate(image, alpha):
+        h, w = image.shape[:-1]
+        M = cv2.getRotationMatrix2D((h / 2, w / 2), alpha, 1)
+        return cv2.warpAffine(image, M, (w, h))
+
 
 class BDDVImageLoader(DataLoaderBase):
     def __init__(self, cfg):

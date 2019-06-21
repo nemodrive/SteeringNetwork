@@ -141,7 +141,7 @@ for epoch in range(250):
         # image = inputs.cpu().numpy()[0]
         # image = image.transpose(1, 2, 0)
         # cv2.imshow("IMG", image + 0.5)
-        # cv2.waitKey(1)
+        # cv2.waitKey(0)
         #
         # print("Course:", labels.cpu().numpy()[0].argmax())
         #
