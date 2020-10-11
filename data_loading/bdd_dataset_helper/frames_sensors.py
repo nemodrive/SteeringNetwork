@@ -62,6 +62,49 @@ def read_gyro_json(json_file, video_filename):
     return res
 
 
+def read_steer_json(json_file, video_filename):
+    steer = json_file['steer_data']['steer']
+    timestamps = json_file['steer_data']['tp']
+    steers = []
+    for (s, t) in zip(steer, timestamps):
+        steers.append({'steer': s, 'timestamp': t})
+    res = {}
+    bad_video_t = 0
+    bad_video_same = 0
+    for ifile, f in enumerate(steers):
+        if ifile != 0:
+            if int(f['timestamp']) - prev_t > 30:
+                bad_video_t = 1
+                break
+            if abs(int(f['timestamp']) - int(prev_t)) < 0:
+                bad_video_same = 1
+                break
+        prev_t = f['timestamp']
+
+    if bad_video_t:
+        print(
+            '{} is a bad video because time sample for steer not uniform'.format(video_filename))
+        return None
+    if len(steer) == 0:
+        print('{} is a bad video because no steer data available'.format(video_filename))
+        return None
+    if bad_video_same:
+        print('{} is a bad video because same timestamps for steer'.format(video_filename))
+        return None
+
+    for key in steers[0].keys():
+        res[key] = to_array(steers, key)
+
+    # add the starting time point and ending time point as well
+    res['startTime'] = json_file['startTime'] / 1000
+    res['endTime'] = json_file['endTime'] / 1000
+
+    if check_allignment(res, video_filename) is False:
+        return None
+
+    return res
+
+
 def read_acc_json(json_file, video_filename):
     acc = json_file['accelerometer']
     res = {}
