@@ -73,7 +73,7 @@ def add_steering(file, tts, deceleration_thresh):
     next_ind = 0
     steer = np.zeros(len(s))
     for i in range(len(s)):
-        while next_ind < len(s) and tstamps[next_ind] - tstamps[i] < tts:
+        while next_ind < len(s) and tstamps[next_ind] - tstamps[i] <= tts:
             next_ind += 1
         if next_ind >= len(s):
             break
