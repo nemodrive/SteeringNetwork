@@ -220,6 +220,45 @@ def fill_missing_gps(values, max_value):
     return values
 
 
+def get_interpolated_steer(res, nr_frames):
+    tot_ms = res['endTime'] - res['startTime']
+
+    def interpolate(res, nout, time_unit):
+        steer = res['steer']
+        steer_out = np.zeros((nout, ), dtype=np.float32)
+
+        # if time is t second, there should be t+1 points
+        last_start = 0
+        ts = res['timestamp']
+        for i in range(nout):
+            # convert to ms timestamp
+            timenow = i * time_unit + res['startTime']
+
+            while (last_start + 1 < len(ts)) and (ts[last_start + 1] < timenow):
+                last_start += 1
+
+            if last_start + 1 == len(ts):
+                steer_out[i] = steer[last_start]
+            elif timenow <= ts[0]:
+                steer_out[i] = steer[0]
+            else:
+                time1 = timenow - ts[last_start]
+                time2 = ts[last_start + 1] - timenow
+                r1 = time2 / (time1 + time2)
+                r2 = time1 / (time1 + time2)
+
+                inter = r1 * steer[last_start] + r2 * steer[last_start + 1]
+                steer_out[i] = inter
+
+        return steer_out
+
+    fixed = None
+    # fixed = interpolate(res, tot_ms * HZ // 1000, 1000.0 / HZ)
+    original = interpolate(res, nr_frames, tot_ms / nr_frames)
+
+    return fixed, original
+
+
 def get_interpolated_acc(res, nr_frames):
     tot_ms = res['endTime'] - res['startTime']
 
@@ -494,9 +533,9 @@ def get_interpolated_sensors(json_path, video_filename, nr_frames):
     res = read_steer_json(seg, video_filename)
     if res is None:
         return None, None, -1
-    fixed_acc, original_acc = get_interpolated_steer(res, nr_frames)
+    fixed_steer, original_steer = get_interpolated_steer(res, nr_frames)
     # fixed_data['accelerometer'] = fixed_acc
-    original_data['steer'] = original_acc
+    original_data['steer'] = original_steer
 
     # Get accelerometer valus for each frame
     # res = read_acc_json(seg, video_filename)
