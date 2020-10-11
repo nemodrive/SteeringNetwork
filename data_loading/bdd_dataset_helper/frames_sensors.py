@@ -428,4 +428,6 @@ def get_interpolated_sensors(json_path, video_filename, nr_frames):
     # # fixed_data['gyroscope'] = fixed_gyro
     # original_data['gyroscope'] = original_gyro
 
+    print(original_data.keys())
+
     return fixed_data, original_data, 0

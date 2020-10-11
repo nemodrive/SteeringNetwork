@@ -91,6 +91,7 @@ def get_steer_values(original_data, fixed_data):
     gps = fixed_data['gps']
     acc = fixed_data['accelerometer']
     gyro = fixed_data['gyroscope']
+    pos = fixed_data['pos']
     # Trucate frames in case of a positive argument value
     if args.truncate_frames > 0:
         speed = fixed_data['speed'][:args.truncate_frames, :]
@@ -98,16 +99,17 @@ def get_steer_values(original_data, fixed_data):
         gps = fixed_data['gps'][:args.truncate_frames, :]
         acc = fixed_data['accelerometer'][:args.truncate_frames, :]
         gyro = fixed_data['gyroscope'][:args.truncate_frames, :]
+        pos = fixed_data['pos'][:args.truncate_frames, :]
 
     # Compute turn and steering on original video frames
     turn, steer_value = turn_future_smooth(original_data['speed'],
-        args.stop_future_frames, args.speed_limit_as_stop, args)
+                                           args.stop_future_frames, args.speed_limit_as_stop, args)
     original_data['turn'] = turn
     original_data['steer'] = steer_value
 
     # Compute turn and steering on 15FPS video frames
     turn, steer_value = turn_future_smooth(speed, args.stop_future_frames,
-        args.speed_limit_as_stop, args)
+                                           args.speed_limit_as_stop, args)
     fixed_data['turn'] = turn
     fixed_data['steer'] = steer_value
     fixed_data = deepcopy(fixed_data)
@@ -118,6 +120,7 @@ def get_steer_values(original_data, fixed_data):
     gps = gps[0::args.temporal_downsample_factor, :]
     acc = acc[0::args.temporal_downsample_factor, :]
     gyro = gyro[0::args.temporal_downsample_factor, :]
+    pos = pos[0::args.temporal_downsample_factor, :]
 
     # from speed to stop labels
     #stop_label = speed_to_future_has_stop(speed, args.stop_future_frames,
@@ -134,7 +137,8 @@ def get_steer_values(original_data, fixed_data):
         'accelerometer': acc,
         'gyroscope': gyro,
         'turn': turn,
-        'steer': steer_value
+        'steer': steer_value,
+        'pos': pos
     }
 
     #locs = relative_future_location(
