@@ -154,8 +154,7 @@ def process_video_info(video_path, args):
     # but there is only one .json for each (delete the index termination)
     fprefix = fprefix.split('-')[0]
     # save the speed field
-    good_bad = video_path.split('/')[8]
-    json_path = os.path.join(os.path.dirname(fd), good_bad, fprefix + ".json")
+    json_path = os.path.join(os.path.dirname(fd), 'good', fprefix + ".json")
     fix_data, orig_data, err = get_interpolated_sensors(
         json_path, fprefix + ".mov", nr_frames)
     if err:
