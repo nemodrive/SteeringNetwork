@@ -154,7 +154,8 @@ def process_video_info(video_path, args):
     # but there is only one .json for each (delete the index termination)
     fprefix = fprefix.split('-')[0]
     # save the speed field
-    json_path = os.path.join(os.path.dirname(fd), 'good', fprefix + ".json")
+    good_bad = video_path.split('/')[8]
+    json_path = os.path.join(os.path.dirname(fd), good_bad, fprefix + ".json")
     fix_data, orig_data, err = get_interpolated_sensors(
         json_path, fprefix + ".mov", nr_frames)
     if err:
@@ -184,8 +185,10 @@ def process_video_info(video_path, args):
             'speed_y': curr_data['speed'][:, 1],
             'linear_speed': curr_data['linear_speed'],
             'course': curr_data['course'],
-            # 'gps_lat': curr_data['gps'][:, 0],
-            # 'gps_long': curr_data['gps'][:, 1],
+            'northing': curr_data['pos'][:, 0],
+            'easting': curr_data['pos'][:, 1],
+            'gps_lat': curr_data['gps'][:, 0],
+            'gps_long': curr_data['gps'][:, 1],
             # 'acceleration_x': curr_data['accelerometer'][:, 0],
             # 'acceleration_y': curr_data['accelerometer'][:, 1],
             # 'acceleration_z': curr_data['accelerometer'][:, 2],
@@ -194,7 +197,7 @@ def process_video_info(video_path, args):
             # 'gyro_z': curr_data['gyroscope'][:, 2],
             # 'course': curr_data['course']
             # 'turn': curr_data['turn'],
-            # 'steer': curr_data['steer']
+            'real_steer_angle': curr_data['steer']
         }
 
     # Create pandas dataframes with all the data
