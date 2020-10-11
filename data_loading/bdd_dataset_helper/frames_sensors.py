@@ -273,11 +273,12 @@ def get_interpolated_loc(res, nr_frames):
         return np.array([math.sin(t) * speed, math.cos(t) * speed])
 
     # Interpolate timestamp, speed and gps
-    def interpolate(speed, latitude, longitude, course, res, nout, time_unit):
+    def interpolate(speed, latitude, longitude, northing, easting, course, res, nout, time_unit):
         tstamp_out = np.zeros((nout,), dtype=np.int64)
         speed_out = np.zeros((nout, 2), dtype=np.float32)
         gps_out = np.zeros((nout, 2), dtype=np.float32)
         course_out = np.zeros((nout,), dtype=np.float32)
+        pos_out = np.zeros((nout, 2), dtype=np.float32)
         # If time is t second, there should be t+1 points
         last_start = 0
         ts = res['timestamp']
@@ -292,10 +293,12 @@ def get_interpolated_loc(res, nr_frames):
                 speed_out[i, :] = speed[last_start]
                 gps_out[i, :] = latitude[last_start], longitude[last_start]
                 course_out[i] = course[last_start]
+                pos_out[i] = northing[last_start], easting[last_start]
             elif timenow <= ts[0]:
                 speed_out[i, :] = speed[0]
                 gps_out[i, :] = latitude[0], longitude[0]
                 course_out[i] = course[0]
+                pos_out[i] = northing[0], easting[0]
             else:
                 # Compute the speed components
                 time1 = timenow - ts[last_start]
@@ -343,12 +346,43 @@ def get_interpolated_loc(res, nr_frames):
                 new_lng = longitude[last_start] + delta_lng
                 gps_out[i, :] = new_lat, new_lng
 
-        return tstamp_out, speed_out, gps_out, course_out
+                # Compute northing and easting
+                northing_avg_speed = (speed[last_start + 1, 1] + speed[last_start, 1]) / 2
+                easting_avg_speed = (speed[last_start + 1, 0] + speed[last_start, 0]) / 2
+                northing_diff_speed = speed[last_start + 1, 1] - speed[last_start, 1]
+                easting_diff_speed = speed[last_start + 1, 0] - speed[last_start, 0]
+                total_time = ts[last_start + 1] - ts[last_start]
+                northing_diff = northing[last_start + 1] - northing[last_start]
+                easting_diff = easting[last_start + 1] - easting[last_start]
+
+                northing_radius = 0
+                easting_radius = 0
+                if northing_diff > 0:
+                    northing_radius = northing_avg_speed * total_time / northing_diff
+                if easting_diff > 0:
+                    easting_radius = easting_avg_speed * total_time / easting_diff
+
+                delta_northing = 0
+                delta_easting = 0
+                if northing_radius > 0:
+                    delta_northing = (speed[last_start, 1] * time1 + northing_diff_speed * time1 ** 2 / (
+                            2 * total_time)) / northing_radius
+                if easting_radius > 0:
+                    delta_easting = (speed[last_start, 0] * time1 + easting_diff_speed * time1 ** 2 / (
+                            2 * total_time)) / easting_radius
+
+                new_northing = northing[last_start] + delta_northing
+                new_easting = easting[last_start] + delta_easting
+                pos_out[i, :] = new_northing, new_easting
+
+        return tstamp_out, speed_out, gps_out, course_out, pos_out
 
     course = res['course']
     speed0 = res['speed']
     latitude = res['latitude']
     longitude = res['longitude']
+    northing = res['northing']
+    easting = res['easting']
     # First convert to speed vecs
     l = len(course)
 
@@ -371,8 +405,8 @@ def get_interpolated_loc(res, nr_frames):
     #     interpolate(speed, latitude, longitude, course, res, nout, 1000.0 / HZ)
 
     # Get stats for each frame
-    tstamp_orig, speed_orig, gps_orig, course_orig = \
-        interpolate(speed, latitude, longitude, course, res, nr_frames, tot_ms / nr_frames)
+    tstamp_orig, speed_orig, gps_orig, course_orig, pos_orig = \
+        interpolate(speed, latitude, longitude, northing, easting, course, res, nr_frames, tot_ms / nr_frames)
 
     fixed = {
         # 'timestamp': tstamp_hz,
@@ -386,7 +420,8 @@ def get_interpolated_loc(res, nr_frames):
         'speed': speed_orig,
         'linear_speed': np.linalg.norm(speed_orig, axis=1),
         'course': course_orig,
-        'gps': gps_orig
+        'gps': gps_orig,
+        'pos': pos_orig
     }
 
     return fixed, original
@@ -412,6 +447,14 @@ def get_interpolated_sensors(json_path, video_filename, nr_frames):
         # fixed_data[key] = fixed_loc[key]
         original_data[key] = original_loc[key]
 
+    # Get steer values for each frame
+    res = read_steer_json(seg, video_filename)
+    if res is None:
+        return None, None, -1
+    fixed_acc, original_acc = get_interpolated_steer(res, nr_frames)
+    # fixed_data['accelerometer'] = fixed_acc
+    original_data['steer'] = original_acc
+
     # Get accelerometer valus for each frame
     # res = read_acc_json(seg, video_filename)
     # if res is None:
@@ -427,7 +470,5 @@ def get_interpolated_sensors(json_path, video_filename, nr_frames):
     # fixed_gyro, original_gyro = get_interpolated_gyro(res, nr_frames)
     # # fixed_data['gyroscope'] = fixed_gyro
     # original_data['gyroscope'] = original_gyro
-
-    print(original_data.keys())
 
     return fixed_data, original_data, 0
