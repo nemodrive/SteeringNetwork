@@ -42,7 +42,7 @@ def split_data(args):
 
         #del info_files[ind]
 
-    valid_inds = sorted(random.sample(range(len(info_files)), valid_len))
+    valid_inds = set(range(len(info_files))).difference(set(train_inds))
     for ind in reversed(valid_inds):
         vid_name = info_files[ind].split('.')[0] + ".mov"
         info_file = os.path.join(args.info_dir, info_files[ind])
