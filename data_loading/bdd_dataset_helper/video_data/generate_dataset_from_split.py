@@ -31,7 +31,6 @@ def split_data(args):
                 # directory already exists
                 pass
 
-    print(video_dict)
 
     with open(args.train_split, 'r') as f:
         train_names = f.readlines()
@@ -78,6 +77,64 @@ def split_data(args):
         copy(info_file, os.path.join(args.destination, 'test/info/', file + '-0.csv'))
         copy(vid_file, os.path.join(args.destination, 'test/data/', vid_name))
 
+    return train_inds, valid_inds
+
+
+def check_split(args, train_inds, valid_inds):
+    video_dict = {}
+
+    with open(args.video_index, 'r') as f:
+        data = f.readlines()
+
+    for line in data:
+        name = line.split('/')[-1].split('.')[0] + '.csv'
+        #print(name)
+        video_dict[name] = line[:-1]
+
+    with open(args.train_split, 'r') as f:
+        train_names = f.readlines()
+
+    # trim the newline from the end
+    train_names = [x.replace('\n', '') for x in train_names]
+
+    with open(args.test_split, 'r') as f:
+        test_names = f.readlines()
+
+    # trim the newline from the end
+    test_names = [x.replace('\n', '') for x in test_names]
+
+    train_names_orig = train_names
+    train_names = [train_names_orig[ind] for ind in train_inds]
+
+    valid_names = [train_names_orig[ind] for ind in valid_inds]
+
+    train_names = set(train_names)
+    valid_names = set(valid_names)
+    test_names = set(test_names)
+
+    train_data_dest = os.path.join(args.destination, 'train/data/')
+    train_info_dest = os.path.join(args.destination, 'train/info/')
+    valid_data_dest = os.path.join(args.destination, 'validation/data/')
+    valid_info_dest = os.path.join(args.destination, 'validation/info/')
+    test_data_dest = os.path.join(args.destination, 'test/data/')
+    test_info_dest = os.path.join(args.destination, 'test/info/')
+
+    train_data_names = set([x.split('.')[0] for x in os.listdir(train_data_dest)])
+    train_info_names = set([x.split('.')[0] for x in os.listdir(train_info_dest)])
+    valid_data_names = set([x.split('.')[0] for x in os.listdir(valid_data_dest)])
+    valid_info_names = set([x.split('.')[0] for x in os.listdir(valid_info_dest)])
+    test_data_names = set([x.split('.')[0] for x in os.listdir(test_data_dest)])
+    test_info_names = set([x.split('.')[0] for x in os.listdir(test_info_dest)])
+
+
+    # check 1: file names match in both original location and final dataset location
+    assert train_names == train_data_names, "Train data names error"
+    assert train_names == train_info_names, "Train info names error"
+    assert valid_names == valid_data_names, "Valid data names error"
+    assert valid_names == valid_info_names, "Valid info names error"
+    assert test_names == test_data_names, "Test data names error"
+    assert test_names == test_info_names, "Test info names error"
+
 if __name__ == '__main__':
     arg_parser = ArgumentParser()
     arg_parser.add_argument('--info_dir',
@@ -102,4 +159,5 @@ if __name__ == '__main__':
         help='path to the destination directory')
 
     args = arg_parser.parse_args()
-    split_data(args)
+    train_inds, valid_inds = split_data(args)
+    check_split(args, train_inds, valid_inds)
