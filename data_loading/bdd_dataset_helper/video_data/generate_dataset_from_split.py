@@ -68,7 +68,7 @@ def split_data(args):
         test_names = f.readlines()
 
     # trim the newline from the end
-    test_names = [x[:-1] for x in test_names]
+    test_names = [x.replace('\n', '') for x in test_names]
 
     for file in test_names:
         vid_name = file.split + ".mov"
