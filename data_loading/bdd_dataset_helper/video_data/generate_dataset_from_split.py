@@ -31,6 +31,8 @@ def split_data(args):
                 # directory already exists
                 pass
 
+    print(video_dict)
+
     with open(args.train_split, 'r') as f:
         train_names = f.readlines()
 
