@@ -46,7 +46,7 @@ def split_data(args):
     for ind in reversed(train_inds):
         vid_name = train_names[ind] + ".mov"
         print(vid_name)
-        info_file = os.path.join(args.info_dir, train_names[ind])
+        info_file = os.path.join(args.info_dir, train_names[ind] + '-0.csv')
         vid_file = video_dict[train_names[ind] + '-0.csv']
 
         copy(info_file, os.path.join(args.destination, 'train/info/', info_files[ind]))
@@ -57,7 +57,7 @@ def split_data(args):
     valid_inds = list(set(range(len(train_names))).difference(set(train_inds)))
     for ind in reversed(valid_inds):
         vid_name = train_names[ind] + ".mov"
-        info_file = os.path.join(args.info_dir, info_files[ind])
+        info_file = os.path.join(args.info_dir, train_names[ind] + '-0.csv')
         vid_file = video_dict[train_names[ind] + '-0.csv']
 
         copy(info_file, os.path.join(args.destination, 'validation/info/', info_files[ind]))
