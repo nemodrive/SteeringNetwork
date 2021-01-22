@@ -37,7 +37,7 @@ def split_data(args):
         train_names = f.readlines()
 
     # trim the newline from the end
-    train_names = [x[:-1] for x in train_names]
+    train_names = [x.replace('\n', '') for x in train_names]
 
     train_len = int(TRAIN * len(train_names))
     valid_len = int(VALID * len(train_names))
