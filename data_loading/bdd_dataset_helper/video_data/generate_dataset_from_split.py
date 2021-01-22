@@ -49,7 +49,7 @@ def split_data(args):
         info_file = os.path.join(args.info_dir, train_names[ind] + '-0.csv')
         vid_file = video_dict[train_names[ind] + '-0.csv']
 
-        copy(info_file, os.path.join(args.destination, 'train/info/', info_files[ind]))
+        copy(info_file, os.path.join(args.destination, 'train/info/', train_names[ind] + '-0.csv'))
         copy(vid_file, os.path.join(args.destination, 'train/data/', vid_name))
 
         #del info_files[ind]
@@ -60,7 +60,7 @@ def split_data(args):
         info_file = os.path.join(args.info_dir, train_names[ind] + '-0.csv')
         vid_file = video_dict[train_names[ind] + '-0.csv']
 
-        copy(info_file, os.path.join(args.destination, 'validation/info/', info_files[ind]))
+        copy(info_file, os.path.join(args.destination, 'validation/info/', train_names[ind] + '-0.csv'))
         copy(vid_file, os.path.join(args.destination, 'validation/data/', vid_name))
         #del info_files[ind]
 
@@ -71,11 +71,11 @@ def split_data(args):
     test_names = [x.replace('\n', '') for x in test_names]
 
     for file in test_names:
-        vid_name = file.split + ".mov"
-        info_file = os.path.join(args.info_dir, file)
+        vid_name = file + ".mov"
+        info_file = os.path.join(args.info_dir, file + '-0.csv')
         vid_file = video_dict[file + '-0.csv']
 
-        copy(info_file, os.path.join(args.destination, 'test/info/', info_files[ind]))
+        copy(info_file, os.path.join(args.destination, 'test/info/', file + '-0.csv'))
         copy(vid_file, os.path.join(args.destination, 'test/data/', vid_name))
 
 if __name__ == '__main__':
