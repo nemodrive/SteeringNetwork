@@ -120,11 +120,11 @@ def check_split(args, train_inds, valid_inds):
     test_info_dest = os.path.join(args.destination, 'test/info/')
 
     train_data_names = set([x.split('.')[0] for x in os.listdir(train_data_dest)])
-    train_info_names = set([x.split('.')[0] for x in os.listdir(train_info_dest)])
+    train_info_names = set([x.split('.')[0][:-2] for x in os.listdir(train_info_dest)])
     valid_data_names = set([x.split('.')[0] for x in os.listdir(valid_data_dest)])
-    valid_info_names = set([x.split('.')[0] for x in os.listdir(valid_info_dest)])
+    valid_info_names = set([x.split('.')[0][:-2] for x in os.listdir(valid_info_dest)])
     test_data_names = set([x.split('.')[0] for x in os.listdir(test_data_dest)])
-    test_info_names = set([x.split('.')[0] for x in os.listdir(test_info_dest)])
+    test_info_names = set([x.split('.')[0][:-2] for x in os.listdir(test_info_dest)])
 
 
     # check 1: file names match in both original location and final dataset location
@@ -134,6 +134,24 @@ def check_split(args, train_inds, valid_inds):
     assert valid_names == valid_info_names, "Valid info names error"
     assert test_names == test_data_names, "Test data names error"
     assert test_names == test_info_names, "Test info names error"
+
+    # check if file contents are the same
+    for split in ['train', 'validation', 'test']:
+        for vid_name in os.listdir(os.path.join(args.destination, split, 'data')):
+            file_name = vid_name.split('.')[0]
+            vid_path = os.path.join(args.destination, split, 'data', vid_name)
+            info_path = vid_path.replace('/data/', '/info/').replace('.mov', '-0.csv')
+            orig_info_file = os.path.join(args.info_dir, file_name + '-0.csv')
+            orig_vid_file = video_dict[file_name + '-0.csv']
+            # print(vid_path, info_path, orig_vid_file, orig_info_file)
+            stream = os.popen('diff {} {}'.format(vid_path, orig_vid_file))
+            output = stream.read()
+            assert output == '', 'Difference between {} and {}'.format(vid_path, orig_vid_file)
+            stream = os.popen('diff {} {}'.format(info_path, orig_info_file))
+            output = stream.read()
+            assert output == '', 'Difference between {} and {}'.format(info_path, orig_info_file)
+
+    print('Everything should be fine')
 
 if __name__ == '__main__':
     arg_parser = ArgumentParser()
